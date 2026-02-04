@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+from app.api.deps import require_api_key_for_ingest
 from app.api.schemas.ingest import IngestRequest
 from app.infra.db.session import get_db
 from app.services.ingest_service import ingest_event
@@ -12,8 +13,11 @@ router = APIRouter(prefix="/api/v1", tags=["ingest"])
 def ingest(
     req: IngestRequest,              # Payload validado pelo Pydantic
     request: Request,                # Request bruto (headers, IP, etc.)
-    db: Session = Depends(get_db),    # Sessão do banco
+    db: Session = Depends(get_db)    # Sessão do banco
 ):
+    # valida api key (401 se falhar)
+    require_api_key_for_ingest(request=request,db=db, source=req.source)
+    
     # IP do cliente (pode ser None em alguns ambientes)
     client_ip = request.client.host if request.client else None
 

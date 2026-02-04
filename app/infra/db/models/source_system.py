@@ -16,6 +16,9 @@ class SourceSystem(Base):
     # Controle de ativação da fonte
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
 
+    # Hash da API Key para autenticação
+    api_key_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
     # Datas de auditoria
     created_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
     updated_at: Mapped[str] = mapped_column(DateTime(timezone=True), server_default=text("now()"), nullable=False)
