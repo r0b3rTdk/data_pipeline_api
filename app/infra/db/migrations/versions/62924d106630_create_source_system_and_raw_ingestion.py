@@ -1,3 +1,11 @@
+"""
+Security utilities.
+
+Includes:
+- API key generation and verification
+- Password hashing and verification
+- JWT creation and validation
+"""
 from alembic import op
 import sqlalchemy as sa
 

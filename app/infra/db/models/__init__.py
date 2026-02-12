@@ -5,3 +5,4 @@ from app.infra.db.models.trusted_event import TrustedEvent  # noqa: F401
 from app.infra.db.models.rejection import Rejection  # noqa: F401
 from app.infra.db.models.user_account import UserAccount  # noqa: F401
 from app.infra.db.models.security_event import SecurityEvent  # noqa: F401
+from .audit_log import AuditLog  # noqa

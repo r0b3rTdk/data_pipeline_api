@@ -1,8 +1,10 @@
-"""fase4 security models
+"""
+Security layer schema.
 
-Revision ID: 0647cc47ea66
-Revises: 4e1d113c69c0
-Create Date: 2026-01-30 19:34:53.625927
+Adds:
+- api_key_hash to source_system
+- user_account
+- security_event
 """
 
 from typing import Sequence, Union

@@ -1,9 +1,13 @@
-# app/infra/db/repositories/security_event_repo.py
+"""
+Security event repository.
 
+Handles creation and querying of security audit events.
+"""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-
+from datetime import datetime
+from sqlalchemy import select, func, desc
 from sqlalchemy.orm import Session
 
 # Imports por side-effect:
@@ -16,6 +20,9 @@ from app.infra.db.models.security_event import SecurityEvent
 
 
 class SecurityEventRepository:
+    """
+    Repository responsible for persisting security events.
+    """
     def __init__(self, db: Session) -> None:
         # Sessão do banco usada pelo repositório
         self.db = db
@@ -50,7 +57,6 @@ class SecurityEventRepository:
         self.db.refresh(ev)
 
         return ev
-
 
 def create_security_event(
     db: Session,
@@ -104,3 +110,52 @@ def create_security_event(
         request_id=request_id,
         details=details_dict,
     )
+
+def list_security_events(
+    db: Session,
+    *,
+    severity: Optional[str] = None,
+    event_type: Optional[str] = None,
+    source_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    page: int = 1,
+    page_size: int = 50,
+):
+    stmt = select(SecurityEvent)
+    count_stmt = select(func.count()).select_from(SecurityEvent)
+
+    if severity:
+        stmt = stmt.where(SecurityEvent.severity == severity)
+        count_stmt = count_stmt.where(SecurityEvent.severity == severity)
+
+    if event_type:
+        stmt = stmt.where(SecurityEvent.event_type == event_type)
+        count_stmt = count_stmt.where(SecurityEvent.event_type == event_type)
+
+    if source_id is not None:
+        stmt = stmt.where(SecurityEvent.source_id == source_id)
+        count_stmt = count_stmt.where(SecurityEvent.source_id == source_id)
+
+    if user_id is not None:
+        stmt = stmt.where(SecurityEvent.user_id == user_id)
+        count_stmt = count_stmt.where(SecurityEvent.user_id == user_id)
+
+    if date_from is not None:
+        stmt = stmt.where(SecurityEvent.created_at >= date_from)
+        count_stmt = count_stmt.where(SecurityEvent.created_at >= date_from)
+
+    if date_to is not None:
+        stmt = stmt.where(SecurityEvent.created_at <= date_to)
+        count_stmt = count_stmt.where(SecurityEvent.created_at <= date_to)
+
+    total = db.execute(count_stmt).scalar_one()
+
+    stmt = (
+        stmt.order_by(desc(SecurityEvent.created_at))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = db.execute(stmt).scalars().all()
+    return total, rows

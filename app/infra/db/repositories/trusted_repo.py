@@ -1,5 +1,10 @@
+"""
+Trusted event repository.
+
+Handles persistence and querying of validated events.
+"""
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from app.infra.db.models.trusted_event import TrustedEvent
 
 # Filtros são compostos dinamicamente sem quebrar a paginação.
@@ -48,3 +53,7 @@ def list_trusted(
     )
 
     return total, items
+
+def get_trusted_by_id(db: Session, trusted_id: int) -> TrustedEvent | None:
+    stmt = select(TrustedEvent).where(TrustedEvent.id == trusted_id)
+    return db.execute(stmt).scalars().first()

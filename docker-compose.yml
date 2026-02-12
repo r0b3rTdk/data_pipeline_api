@@ -1,4 +1,5 @@
 services:
+  # === PostgreSQL Database ===
   db:
     image: postgres:16
     environment:
@@ -10,6 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # === FastAPI Application ===
   api:
     build: .
     env_file:
@@ -20,6 +22,12 @@ services:
       - db
     volumes:
       - ./:/app
-
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALG=${JWT_ALG}
+      - JWT_EXPIRES_MIN=${JWT_EXPIRES_MIN}
+      - PYTHONPATH=/app
+    
+# === Persistent volumes ===
 volumes:
   pgdata:

@@ -1,5 +1,10 @@
+"""
+Trusted event schemas.
+
+DTOs for trusted events and controlled update requests.
+"""
+
 from pydantic import BaseModel
-from typing import Any
 
 # Item individual de evento confiável
 class TrustedItem(BaseModel):
@@ -12,9 +17,19 @@ class TrustedItem(BaseModel):
     event_status: str
     event_timestamp: str  # ISO
 
+
 # Resposta paginada de eventos confiáveis
 class PageResponse(BaseModel):
     page: int
     page_size: int
     total: int
     items: list[TrustedItem]
+
+
+# Request do PATCH /trusted/{id}
+class TrustedPatchRequest(BaseModel):
+    reason: str # Justificativa obrigatoria para auditoria
+    
+    # Campos que podem ser alterados
+    event_status: str | None = None
+    event_type: str | None = None

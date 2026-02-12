@@ -1,3 +1,11 @@
+"""
+Creates validation layer tables:
+
+- trusted_event
+- rejection
+
+Separates accepted data from invalid data.
+"""
 from alembic import op
 import sqlalchemy as sa
 
