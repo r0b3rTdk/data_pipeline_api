@@ -10,11 +10,13 @@ Request ID middleware.
 
 import time
 import uuid
+import logging
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+logger = logging.getLogger("app.request")
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
 
@@ -39,5 +41,16 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         # Headers de rastreabilidade
         response.headers["X-Request-Id"] = rid
         response.headers["X-Process-Time-Ms"] = str(duration_ms)
+
+        logger.info(
+            "request",
+            extra={
+                "request_id": rid,
+                "path": request.url.path,
+                "method": request.method,
+                "status_code": response.status_code,
+                "process_time_ms": duration_ms,
+                },
+            )
 
         return response
