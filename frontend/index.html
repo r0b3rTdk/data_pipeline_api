@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Projeto30 — Admin Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">P30</span>
+        <div class="titles">
+          <div class="title">Projeto30 — Data Pipeline API</div>
+          <div class="subtitle">Admin Dashboard (Fase 7)</div>
+        </div>
+      </div>
+
+      <nav id="nav" class="nav hidden">
+        <a href="#/dashboard" data-route="dashboard">Dashboard</a>
+        <a href="#/trusted" data-route="trusted">Trusted</a>
+        <a href="#/rejections" data-route="rejections">Rejections</a>
+        <a href="#/security-events" data-route="security-events">Security</a>
+        <a href="#/audit" data-route="audit">Audit</a>
+        <button id="btnLogout" class="linklike" type="button">Logout</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      <section id="app" class="app"></section>
+    </main>
+
+    <footer class="footer">
+      <span id="envBadge" class="badge"></span>
+      <span class="muted">•</span>
+      <span class="muted">API consumida via fetch (JWT + RBAC)</span>
+      <span class="muted">•</span>
+      <span class="muted">Desenvolvido por <strong>r0b3rT</strong></span>
+    </footer>
+
+    <script src="./config.js"></script>
+    <script src="./api.js"></script>
+    <script src="./ui.js"></script>
+    <script src="./pages_trusted.js"></script>
+    <script src="./pages_rejections.js"></script>
+    <script src="./pages_security_events.js"></script>
+    <script src="./pages_audit.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

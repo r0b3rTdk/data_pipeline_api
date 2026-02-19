@@ -1,4 +1,4 @@
-# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES) + Segurança (Fase 4 + Fase 5)
+# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES) + Segurança + Front (Fase 6 + Fase 7)
 
 Plataforma mínima e funcional para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** via API — com **segurança** (API Key por fonte), **login JWT**, **RBAC**, **auditoria**, **security events**, **request-id**, **métricas simples** e **testes mínimos**.
 
@@ -46,6 +46,43 @@ Invoke-RestMethod -Method Get "http://localhost:8000/api/v1/health"
 docker compose logs -n 200 api
 docker compose logs -n 200 db
 ```
+
+
+---
+
+## Como rodar o Front (Fase 7)
+
+### Opção 1 — Dev simples (recomendado)
+1) Suba a API normalmente (Docker):
+```bash
+docker compose up -d
+```
+
+2) Suba o front (estático) em outro terminal:
+```bash
+cd frontend
+python -m http.server 3000
+```
+
+Acesse:
+- Front: http://localhost:3000
+- API: http://localhost:8000/docs
+
+> **Config**: `frontend/config.js` → `API_BASE_URL` (padrão: `http://localhost:8000`)
+
+### Login (JWT) no Front
+- Tela chama: `POST /api/v1/auth/login`
+- Token é salvo no `localStorage` em `p01_access_token`
+- Se a API retornar `401`, o front limpa o token e volta para `#/login`
+
+### Telas do Front
+- Dashboard: `#/dashboard` (KPIs via `GET /api/v1/metrics`)
+- Trusted: `#/trusted` (lista + detalhes)
+- Rejections: `#/rejections` (lista + detalhes)
+- Security Events: `#/security-events` (lista + filtros: `severity`, `event_type`)
+- Audit Logs: `#/audit` (lista + filtros: `action`, `entity_type`, `user_id`)
+
+---
 
 ---
 
@@ -316,6 +353,11 @@ docker compose exec -e PYTHONPATH=/app api pytest -q
 
 ---
 
+## Documentação
+
+- `docs/07_fase7_front_dashboard.md` — como rodar e usar o Front (Fase 7)
+- `docs/99_troubleshooting_fase7.md` — erros comuns do Front (CORS, 401, base url, etc)
+
 ## Troubleshooting (PowerShell)
 
 - **`curl` no PowerShell** é alias de `Invoke-WebRequest` → prefira `Invoke-RestMethod` ou `curl.exe`.
@@ -337,6 +379,17 @@ docker compose exec -e PYTHONPATH=/app api pytest -q
   - `source_system`, `raw_ingestion`, `trusted_event`, `rejection`, `user_account`, `security_event`, `alembic_version`
 - `GET /api/v1/trusted`, `GET /api/v1/rejections`, `GET /api/v1/health` funcionando
 - Docker sobe com `docker compose up -d --build`
+
+### Fase 6 (Hardening leve)
+- Logs em JSON
+- Seed idempotente (admin + source default)
+- Headers de segurança básicos
+- Testes passando no container
+
+### Fase 7 (Front Admin)
+- Front roda em `http://localhost:3000` e consome API em `http://localhost:8000`
+- Login JWT no front + armazenamento de token
+- Dashboard (metrics) + Trusted + Rejections + Security Events (filtros) + Audit Logs (filtros)
 
 ### Fase 5 (Auth JWT + RBAC + observabilidade + testes)
 - `POST /api/v1/auth/login` retorna `access_token` JWT

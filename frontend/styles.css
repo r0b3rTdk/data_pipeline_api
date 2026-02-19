@@ -1,0 +1,256 @@
+/* Minimal admin look — clean and functional */
+
+/* =========================
+   1) VARIÁVEIS GLOBAIS (THEME)
+   =========================
+   :root é o "escopo global" do CSS.
+*/
+:root{
+  --bg: #0b0f14;       /* cor de fundo principal (bem escura) */
+  --panel: #121822;    /* cor de painéis/containers (topbar etc.) */
+  --panel2: #0f151f;   /* uma variação pra gradiente/sombra */
+  --text: #e6edf3;     /* cor padrão do texto */
+  --muted: #9fb0c0;    /* texto “apagado” (subtítulos, infos secundárias) */
+  --border: #223043;   /* cor padrão de bordas */
+  --ok: #7dffb2;       /* cor de status OK */
+  --warn: #ffe08a;     /* cor de status ALERTA/AVISO */
+}
+
+/* =========================
+   2) RESET / NORMALIZAÇÃO
+   =========================
+   box-sizing: border-box faz com que padding/border
+   não “aumentem” a largura/altura final dos elementos,
+   deixando layout MUITO mais previsível.
+*/
+*{ box-sizing: border-box; }
+
+/* Estiliza o documento inteiro */
+html, body{
+  height:100%;                 /* garante altura total da tela */
+  margin:0;                    /* remove margem padrão do navegador */
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background: var(--bg);       /* usa variável global */
+  color: var(--text);          /* texto padrão */
+}
+
+/* =========================
+   3) TOPBAR (barra de topo fixa)
+   =========================
+*/
+.topbar{
+  display:flex;                /* layout em linha */
+  align-items:center;          /* centraliza verticalmente */
+  justify-content:space-between; /* joga um bloco pra esquerda e outro pra direita */
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+
+  /* gradiente sutil pra dar profundidade */
+  background: linear-gradient(180deg, var(--panel), var(--panel2));
+
+  /* sticky: fica “grudado” no topo quando rola a página */
+  position: sticky;
+  top:0;
+}
+
+/* Bloco de marca (logo + textos) */
+.brand{ display:flex; gap:12px; align-items:center; }
+
+/* “Logo” em forma de quadrado com letra (ex: R, A, etc.) */
+.logo{
+  width:36px; height:36px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--border);
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: .5px; /* espaçamento entre letras */
+}
+
+/* Títulos no topo */
+.titles .title{ font-weight: 700; }
+.titles .subtitle{
+  color: var(--muted);
+  font-size: 12px;
+  margin-top:2px;
+}
+
+/* =========================
+   4) NAV (links do topo)
+   =========================
+*/
+.nav{ display:flex; gap:14px; align-items:center; }
+
+/*
+  .nav a e .linklike compartilham estilo:
+  - .nav a: links normais
+  - .linklike: botão que parece link (ex: <button class="linklike">)
+*/
+.nav a, .linklike{
+  color: var(--muted);
+  text-decoration:none;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent; /* evita "pular" quando vira hover */
+  background: transparent;
+  cursor:pointer;
+}
+
+/* Efeito ao passar o mouse */
+.nav a:hover, .linklike:hover{
+  color: var(--text);
+  border-color: var(--border);
+  background: rgba(255,255,255,.03);
+}
+
+/* Link “ativo” (página atual) */
+.nav a.active{
+  color: var(--text);
+  border-color: var(--border);
+  background: rgba(255,255,255,.05);
+}
+
+/* Classe utilitária: esconder elementos */
+.hidden{ display:none !important; }
+
+/* =========================
+   5) CONTAINER (largura máxima do conteúdo)
+   =========================
+*/
+.container{
+  max-width: 1100px; /* limita a largura em telas grandes */
+  margin: 0 auto;    /* centraliza horizontalmente */
+  padding: 18px;     /* respiro interno */
+}
+
+/* =========================
+   6) CARD (caixa/painel)
+   =========================
+*/
+.card{
+  border:1px solid var(--border);
+  background: rgba(255,255,255,.02); /* bem sutil, quase transparente */
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* =========================
+   7) GRID (layout em grade)
+   =========================
+*/
+.grid{
+  display:grid;
+  grid-template-columns: 1fr; /* padrão: 1 coluna */
+  gap: 14px;
+}
+
+/*
+  Responsividade:
+  - em telas >= 820px, se tiver .grid.two, vira 2 colunas iguais
+  Exemplo: <div class="grid two"> ... </div>
+*/
+@media (min-width: 820px){
+  .grid.two{ grid-template-columns: 1fr 1fr; }
+}
+
+/* =========================
+   8) TIPOGRAFIA (textos)
+   =========================
+*/
+.h1{ font-size: 18px; margin: 0 0 6px 0; }
+.p{
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+/* =========================
+   9) LAYOUTS RÁPIDOS (flex)
+   =========================
+*/
+.row{ display:flex; gap: 10px; align-items:center; }
+
+/* =========================
+   10) INPUTS (campo de texto)
+   =========================
+*/
+.input{
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,.25);
+  color: var(--text);
+  outline: none; /* remove borda azul padrão ao focar (você pode customizar depois) */
+}
+
+/* =========================
+   11) BOTÕES
+   =========================
+*/
+.btn{
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  cursor:pointer;
+  font-weight: 700;
+}
+.btn:hover{ background: rgba(255,255,255,.1); }
+
+/* Botão principal (ação mais importante) */
+.btn.primary{
+  background: rgba(138,180,255,.18);
+  border-color: rgba(138,180,255,.35);
+}
+.btn.primary:hover{ background: rgba(138,180,255,.25); }
+
+/* =========================
+   12) DIVISÓRIA (linha horizontal)
+   =========================
+*/
+.hr{
+  height: 1px;
+  background: var(--border);
+  border:0;
+  margin: 14px 0;
+}
+
+/* =========================
+   13) BADGES (tags de status)
+   =========================
+*/
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding: 6px 10px;
+  border-radius: 999px; /* deixa totalmente arredondado */
+  border:1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  background: rgba(255,255,255,.02);
+}
+
+/* Variações por status */
+.badge.ok{ color: var(--ok); border-color: rgba(125,255,178,.35); }
+.badge.warn{ color: var(--warn); border-color: rgba(255,224,138,.35); }
+
+/* Texto apagado utilitário */
+.muted{ color: var(--muted); }
+
+/* =========================
+   14) FOOTER (rodapé)
+   =========================
+*/
+.footer{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px 18px 18px;
+  color: var(--muted);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
