@@ -32,3 +32,5 @@ Thumbs.db
 
 # === Alembic compiled files ===
 **/migrations/**/__pycache__/
+!.env.prod.example
+
