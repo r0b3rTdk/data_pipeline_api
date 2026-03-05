@@ -1,4 +1,4 @@
-# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES) + Segurança + Front (Fase 6 + Fase 7)
+# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES) + Segurança + Front 
 
 Plataforma mínima e funcional para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** via API — com **segurança** (API Key por fonte), **login JWT**, **RBAC**, **auditoria**, **security events**, **request-id**, **métricas simples** e **testes mínimos**.
 
@@ -401,6 +401,163 @@ docker compose exec -e PYTHONPATH=/app api pytest -q
 - `pytest -q` roda (mínimo) sem falhas no container
 
 ---
+
+
+---
+
+# README — trecho Fase 8 (Deploy / Produção-Lite)
+
+## Deploy (Produção-Lite) — Docker + Nginx
+
+> Esta etapa disponibiliza a API em servidor Linux com **Docker Compose + Nginx** em modo **produção-lite** (HTTP).  
+> A estrutura para HTTPS com Certbot foi preparada para ativação futura quando houver domínio.
+
+### Arquivos principais
+- `docker-compose.prod.yml`
+- `deploy/nginx/default.conf`
+- `.env.prod.example`
+
+---
+
+## 1) Preparar servidor (Ubuntu)
+
+### Clonar projeto
+```bash
+sudo mkdir -p /opt/projeto01
+sudo chown $USER:$USER /opt/projeto01
+git clone https://github.com/r0b3rTdk/data_pipeline_api /opt/projeto01
+cd /opt/projeto01
+```
+
+### Criar `.env.prod`
+```bash
+cp .env.prod.example .env.prod
+nano .env.prod
+```
+
+> Preencha com valores fortes para:
+> - `POSTGRES_PASSWORD`
+> - `JWT_SECRET`
+> - `SEED_ADMIN_PASSWORD`
+> - `SEED_SOURCE_API_KEY`
+
+### (Opcional, recomendado no servidor) criar `.env` para o Compose
+Algumas versões/fluxos do Docker Compose podem emitir warning de interpolação (`POSTGRES_PASSWORD`).
+Para evitar isso no servidor:
+
+```bash
+cp .env.prod .env
+```
+
+---
+
+## 2) Subir ambiente de produção-lite
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.prod.yml ps
+```
+
+Esperado:
+- `db` → healthy
+- `api` → healthy
+- `nginx` → running
+
+---
+
+## 3) Aplicar migrations e seed
+
+### Migrations
+```bash
+docker compose -f docker-compose.prod.yml exec api alembic upgrade head
+```
+
+### Seed (primeira vez)
+```bash
+docker compose -f docker-compose.prod.yml exec api python -m app.scripts.seed
+```
+
+---
+
+## 4) Testes rápidos em produção-lite (HTTP via Nginx)
+
+### Health
+```bash
+curl -i http://localhost/api/v1/health
+```
+
+### Login (JWT)
+```bash
+curl -i -X POST http://localhost/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"SUA_SENHA_DO_SEED"}'
+```
+
+### Ingest com API Key
+```bash
+curl -i -X POST http://localhost/api/v1/ingest \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_SEED_SOURCE_API_KEY" \
+  -d '{
+    "source": "partner_a",
+    "external_id": "ext-prod-test-001",
+    "entity_id": "ent-001",
+    "event_status": "NEW",
+    "event_timestamp": "2026-02-24T00:00:00Z",
+    "event_type": "ORDER",
+    "severity": "low",
+    "payload": {"test": true}
+  }'
+```
+
+---
+
+## 5) Logs e operação
+
+### Status
+```bash
+docker compose -f docker-compose.prod.yml ps
+```
+
+### Logs
+```bash
+docker compose -f docker-compose.prod.yml logs -n 200 nginx
+docker compose -f docker-compose.prod.yml logs -n 200 api
+docker compose -f docker-compose.prod.yml logs -n 200 db
+```
+
+### Restart
+```bash
+docker compose -f docker-compose.prod.yml restart
+```
+
+> Após `restart`, pode haver alguns segundos de indisponibilidade enquanto `db/api` voltam e os healthchecks estabilizam.
+
+---
+
+## 6) HTTPS (futuro)
+
+O bloco HTTPS do Nginx foi preparado, mas **não ativado nesta fase** por ausência de domínio público.
+
+Quando houver domínio:
+1. Apontar DNS (registro A) para IP do servidor
+2. Ajustar `server_name` no Nginx
+3. Gerar certificado com Certbot
+4. Reativar bloco `listen 443 ssl`
+5. Validar `https://SEU_DOMINIO/api/v1/health`
+
+---
+
+## 7) Status da Fase 8
+
+Entregue em modo **produção-lite**:
+- Deploy com Docker Compose (prod)
+- Nginx reverse proxy
+- Banco persistente com volume
+- Login JWT via Nginx
+- Ingest com API key via Nginx
+- Estrutura pronta para HTTPS futuro
+
 
 ## Autor
 

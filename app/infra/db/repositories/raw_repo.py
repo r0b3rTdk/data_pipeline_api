@@ -1,3 +1,9 @@
+"""
+Raw ingestion repository.
+
+Data-access helpers for raw event lookup and persistence.
+"""
+
 from sqlalchemy.orm import Session
 from app.infra.db.models.raw_ingestion import RawIngestion
 

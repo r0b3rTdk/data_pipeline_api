@@ -1,3 +1,9 @@
+"""
+User account model.
+
+Application users used for JWT authentication and RBAC authorization.
+"""
+
 from __future__ import annotations
 
 from sqlalchemy import (

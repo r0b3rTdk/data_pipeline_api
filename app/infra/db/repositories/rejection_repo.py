@@ -1,3 +1,9 @@
+"""
+Rejection repository.
+
+Data-access helpers for inserting and listing rejection records.
+"""
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.infra.db.models.rejection import Rejection

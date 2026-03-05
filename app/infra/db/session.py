@@ -1,3 +1,9 @@
+"""
+Database session utilities.
+
+SQLAlchemy engine/session setup and FastAPI dependency for DB sessions.
+"""
+
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

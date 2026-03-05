@@ -1,3 +1,9 @@
+"""
+Rejection schemas.
+
+DTOs for rejected events and paginated rejection list responses.
+"""
+
 from pydantic import BaseModel
 
 # Item individual de rejeição

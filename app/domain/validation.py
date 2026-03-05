@@ -1,3 +1,9 @@
+"""
+Event validation rules.
+
+Business-rule validation for event type and event status values.
+"""
+
 # Conjuntos de valores permitidos
 ALLOWED_STATUS = {"NEW", "PROCESSING", "DONE", "FAILED"}
 ALLOWED_TYPES = {"ORDER", "PAYMENT", "SHIPMENT"}

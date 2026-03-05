@@ -4,6 +4,45 @@ Este changelog registra as entregas por fase do projeto.
 
 ---
 
+## [Fase 8] Deploy / Produção (Docker + Nginx) — Produção-Lite
+
+### Adicionado
+- `docker-compose.prod.yml` para execução em ambiente de produção-lite.
+- Serviço `nginx` como reverse proxy para a API (`/api/ -> api:8000`).
+- Configuração de Nginx em `deploy/nginx/default.conf`.
+- Healthchecks para serviços `db` e `api`.
+- `restart: unless-stopped` nos serviços principais.
+- `.env.prod.example` como modelo de variáveis para produção.
+- Scripts e estrutura de deploy preparados para evolução da fase (incluindo base para HTTPS).
+- Documentação de deploy da fase:
+  - `docs/08_fase8_deploy_producao.md`
+  - `docs/99_troubleshooting_fase8.md`
+
+### Alterado
+- Fluxo de execução separado entre ambiente local (`docker-compose.yml`) e produção-lite (`docker-compose.prod.yml`).
+- Nginx configurado para operar inicialmente em HTTP (porta 80), com bloco HTTPS preparado para ativação futura.
+- Ajustes de processo no servidor para leitura de variáveis pelo Compose via `.env` local (copiado de `.env.prod`) para evitar warning de interpolação.
+
+### Validado em servidor Linux (produção-lite)
+- Subida de ambiente com `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build`.
+- API e banco PostgreSQL saudáveis (`healthy`) via healthcheck.
+- Nginx operacional como reverse proxy.
+- `GET /api/v1/health` via Nginx retornando `200 OK`.
+- Execução de migrations (`alembic upgrade head`) em ambiente de produção-lite.
+- Execução de seed (`python -m app.scripts.seed`) com criação de:
+  - usuário admin
+  - source system `partner_a`
+- `POST /api/v1/auth/login` funcionando via Nginx (JWT).
+- `POST /api/v1/ingest` funcionando via Nginx com `X-API-Key`.
+- Persistência do banco validada após restart (IDs incrementando em novo ingest).
+- Reinício dos serviços validado (`docker compose restart`) com recuperação normal após janela de inicialização.
+
+### Observações
+- HTTPS com Certbot/Let's Encrypt **não foi ativado nesta fase** por ausência de domínio público apontado para o servidor.
+- Estrutura de Nginx/TLS ficou preparada para ativação futura quando houver domínio.
+
+---
+
 ## [Fase 7] — Front Admin (Visualização) — 2026-02-19
 ### Adicionado
 - Front-end simples em `frontend/` (HTML/CSS/JS puro) para consumo da API e visualização do pipeline.

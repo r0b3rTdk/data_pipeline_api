@@ -1,3 +1,9 @@
+"""
+Ingestion request schemas.
+
+DTOs that define the payload contract for event ingestion endpoints.
+"""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 

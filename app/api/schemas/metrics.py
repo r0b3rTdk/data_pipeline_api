@@ -1,3 +1,9 @@
+"""
+Pipeline metrics schemas.
+
+DTOs for aggregated pipeline metrics and rejection category ranking.
+"""
+
 from pydantic import BaseModel
 
 

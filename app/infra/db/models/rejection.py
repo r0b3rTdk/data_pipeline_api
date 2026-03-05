@@ -1,3 +1,9 @@
+"""
+Rejection model.
+
+Stores validation and business-rule violations linked to raw events.
+"""
+
 from sqlalchemy import BigInteger, String, DateTime, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base

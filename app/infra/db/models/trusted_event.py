@@ -1,3 +1,9 @@
+"""
+Trusted event model.
+
+Stores validated events approved for downstream processing and analytics.
+"""
+
 from sqlalchemy import BigInteger, String, DateTime, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base

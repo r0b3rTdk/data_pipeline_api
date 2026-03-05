@@ -1,3 +1,9 @@
+"""
+Raw ingestion model.
+
+Immutable storage for incoming events before validation and processing.
+"""
+
 from sqlalchemy import BigInteger, String, DateTime, Text, Integer, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base

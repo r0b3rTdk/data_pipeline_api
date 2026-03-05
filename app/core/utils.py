@@ -1,3 +1,9 @@
+"""
+Utility helpers.
+
+Small helper functions for request tracing and deterministic payload hashing.
+"""
+
 import hashlib
 import json
 import uuid

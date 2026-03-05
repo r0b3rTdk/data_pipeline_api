@@ -1,5 +1,9 @@
 """
-Autor: r0b3rT
+Data Pipeline API entrypoint.
+
+Main FastAPI application setup, middleware wiring, and route registration.
+
+Author: r0b3rT
 """
 
 from fastapi import FastAPI, HTTPException
