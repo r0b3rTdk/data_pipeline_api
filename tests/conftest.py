@@ -18,6 +18,10 @@ from app.core.security import hash_password
 
 from app.infra.db.models.user_account import UserAccount
 
+from datetime import datetime, timezone
+from app.infra.db.models.trusted_event import TrustedEvent
+from app.infra.db.models.source_system import SourceSystem
+from app.infra.db.models.raw_ingestion import RawIngestion
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -90,3 +94,31 @@ def login(client: TestClient, username: str, password: str) -> str:
     r = client.post("/api/v1/auth/login", json={"username": username, "password": password})
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
+
+@pytest.fixture()
+def trusted_event(db_session):
+    # 1) cria source system (source_id obrigatório)
+    source = SourceSystem(
+        name="ci-source",
+        is_active=True,
+    )
+    db_session.add(source)
+    db_session.flush()
+
+    # 2) cria raw ingestion (raw_ingestion_id obrigatório)
+    raw = RawIngestion(
+        source_id=source.id,
+        payload={"hello": "world"},
+    )
+    db_session.add(raw)
+    db_session.flush()
+
+    # 3) cria trusted event (apenas campos que existem no model)
+    t = TrustedEvent(
+        source_id=source.id,
+        raw_ingestion_id=raw.id,
+        status="NEW",
+    )
+    db_session.add(t)
+    db_session.flush()
+    return t
