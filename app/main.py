@@ -26,7 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 setup_logging(settings.LOG_LEVEL)
 
 # Instância principal da aplicação FastAPI
-app = FastAPI(title="Projeto01 - Data Pipeline API")
+app = FastAPI(title="Data Pipeline API")
 
 # Middleware: security headers
 app.add_middleware(SecurityHeadersMiddleware)

@@ -1,0 +1,65 @@
+name: CI - Data Pipeline API
+
+on:
+  # Dispara quando fizer push nas branches principais
+  push:
+    branches: [main, develop]
+  # Dispara quando abrir/atualizar PR para main/develop
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: appdb
+          POSTGRES_USER: appuser
+          POSTGRES_PASSWORD: apppass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U appuser -d appdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # Variáveis de ambiente usadas pelos testes e pela app no CI
+      DATABASE_URL: postgresql+psycopg://appuser:apppass@localhost:5432/appdb
+      APP_ENV: test
+      JWT_SECRET: test_secret_key
+      JWT_ALG: HS256
+      JWT_EXPIRES_MIN: 30
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip" # Cache de dependências pra acelerar builds
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest flake8
+
+      - name: Run lint (flake8)
+        run: |
+          flake8 app tests # Falha o CI se o padrão de código estiver ruim
+
+      - name: Run database migrations
+        run: |
+          alembic upgrade head # Sobe o schema do banco antes de rodar os testes
+
+      - name: Run tests
+        run: |
+          pytest -q
