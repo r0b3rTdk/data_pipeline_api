@@ -10,6 +10,11 @@ import hashlib
 import hmac
 import secrets
 from typing import Optional, Any
+# === USER AUTH ===
+from datetime import datetime, timedelta, timezone
+from jose import jwt, JWTError
+from passlib.context import CryptContext
+from app.core.settings import settings
 
 # === API KEY ===
 def generate_api_key(prefix: str = "src") -> str:
@@ -25,12 +30,6 @@ def verify_api_key(api_key: str, expected_hash: Optional[str]) -> bool:
         return False
     candidate = hash_api_key(api_key)
     return hmac.compare_digest(candidate, expected_hash)
-
-# === USER AUTH ===
-from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from app.core.settings import settings
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
