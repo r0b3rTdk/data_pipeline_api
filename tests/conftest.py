@@ -8,6 +8,10 @@ Test configuration.
 import os
 
 import pytest
+import json
+import hashlib
+from datetime import datetime, timezone
+import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +22,6 @@ from app.core.security import hash_password
 
 from app.infra.db.models.user_account import UserAccount
 
-from datetime import datetime, timezone
 from app.infra.db.models.trusted_event import TrustedEvent
 from app.infra.db.models.source_system import SourceSystem
 from app.infra.db.models.raw_ingestion import RawIngestion
@@ -97,27 +100,40 @@ def login(client: TestClient, username: str, password: str) -> str:
 
 @pytest.fixture()
 def trusted_event(db_session):
-    # 1) cria source system (source_id obrigatório)
+    # 1) SourceSystem (sem is_active)
     source = SourceSystem(
         name="ci-source",
-        is_active=True,
+        # status tem default "active", pode omitir
     )
     db_session.add(source)
     db_session.flush()
 
-    # 2) cria raw ingestion (raw_ingestion_id obrigatório)
+    # 2) RawIngestion (preencher campos NOT NULL)
+    payload_obj = {"hello": "world"}
+    payload_raw = json.dumps(payload_obj, separators=(",", ":"), sort_keys=True)
+    payload_hash = hashlib.sha256(payload_raw.encode("utf-8")).hexdigest()
+
     raw = RawIngestion(
         source_id=source.id,
-        payload={"hello": "world"},
+        external_id="raw-ci-1",
+        event_timestamp=datetime.now(timezone.utc),
+        payload_raw=payload_raw,
+        payload_hash=payload_hash,
+        request_id=str(uuid.uuid4()),
+        # os opcionais (client_ip/user_agent) podem ficar sem
     )
     db_session.add(raw)
     db_session.flush()
 
-    # 3) cria trusted event (apenas campos que existem no model)
+    # 3) TrustedEvent (preencher campos NOT NULL)
     t = TrustedEvent(
-        source_id=source.id,
         raw_ingestion_id=raw.id,
-        status="NEW",
+        source_id=source.id,
+        external_id="trusted-ci-1",
+        entity_id="ent-1",
+        event_type="ORDER",
+        event_status="NEW",
+        event_timestamp=datetime.now(timezone.utc),
     )
     db_session.add(t)
     db_session.flush()
