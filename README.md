@@ -233,6 +233,25 @@ docker compose exec -e PYTHONPATH=/app api pytest -q
 
 ---
 
+## CI/CD (GitHub Actions)
+
+Este repositório possui **Integração Contínua** via **GitHub Actions**.
+
+- Workflow: `.github/workflows/ci.yml`
+- Dispara em: `push` e `pull_request` para `main` e `develop`
+- Etapas:
+  - lint (`flake8 app`)
+  - migrations (`alembic upgrade head`)
+  - testes (`pytest -q`)
+  - PostgreSQL sobe via service container no runner
+
+Para visualizar execuções e logs:
+- GitHub → aba **Actions**
+
+> Documentação da fase: `docs/10_fase10_ci_cd.md` e `docs/99_troubleshooting_fase10.md`.
+
+---
+
 ## Autor
 
 **Robert Emanuel**  

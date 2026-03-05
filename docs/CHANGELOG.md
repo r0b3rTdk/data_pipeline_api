@@ -6,6 +6,29 @@ Este changelog registra as entregas por fase do projeto.
 
 ---
 
+## [Fase 10] — CI/CD (GitHub Actions)
+### Adicionado
+- Pipeline de Integração Contínua com GitHub Actions em:
+  - `.github/workflows/ci.yml`
+- Execução automática do pipeline em:
+  - `push` e `pull_request` para `main` e `develop`
+- Etapas do CI:
+  - instalação de dependências
+  - lint com `flake8` (diretório `app/`)
+  - provisionamento de PostgreSQL via service container
+  - migrations com Alembic (`alembic upgrade head`)
+  - testes com Pytest (`pytest -q`)
+
+### Alterado
+- Configuração do lint adicionada via `.flake8` para adequar regras do flake8 ao padrão do projeto e evitar falhas por regras puramente estéticas no CI.
+- Testes ajustados para rodarem em ambiente limpo (CI), criando dados necessários via fixtures (sem depender de registros pré-existentes no banco).
+
+### Documentação
+- `docs/10_fase10_ci_cd.md`
+- `docs/99_troubleshooting_fase10.md`
+
+---
+
 ## [Fase 9] — Observabilidade
 ### Adicionado
 - Endpoint de readiness:
