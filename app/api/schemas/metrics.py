@@ -1,17 +1,25 @@
 """
 Pipeline metrics schemas.
 
-DTOs for aggregated pipeline metrics and rejection category ranking.
+DTOs for aggregated pipeline metrics, HTTP counters, 
+and rejection category ranking.
 """
 
 from pydantic import BaseModel
 
-
+class HttpMetrics(BaseModel):
+    uptime_seconds: int  # Tempo de execução do processo (em segundos)
+    requests_total: int  # Total de requisições atendidas
+    errors_4xx_total: int  # Total de respostas 4xx
+    errors_5xx_total: int  # Total de respostas 5xx
+    
 class TopCategoryItem(BaseModel):
     category: str # Categoria de rejeicao
     count: int # Quantidade de ocorrencias dessa categoria
-
-
+    
+class HttpRouteStats(BaseModel):
+    count: int # Total de requisições para a rota
+    avg_ms: float # Tempo médio de resposta para a rota (em ms)
 class MetricsResponse(BaseModel):
     total_raw: int # Total de eventos recebidos
     total_trusted: int # Total de eventos aceitos
@@ -19,3 +27,7 @@ class MetricsResponse(BaseModel):
     rejection_rate: float # Percentual de rejeicao
     duplicates: int # Total de eventos duplicados
     top_rejection_categories: list[TopCategoryItem] # Ranking de categorias de rejeicao
+    
+    http: HttpMetrics  # Métricas HTTP agregadas (uptime + contadores)
+    http_routes: dict[str, HttpRouteStats] # Métricas de rota
+    

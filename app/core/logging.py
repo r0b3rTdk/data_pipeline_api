@@ -25,7 +25,17 @@ class JsonFormatter(logging.Formatter):
         }
 
         # Campos extras úteis (quando existirem)
-        for key in ("request_id", "path", "method", "status_code", "process_time_ms"):
+        for key in (
+            "request_id", 
+            "path", 
+            "method", 
+            "status_code", 
+            "process_time_ms",
+            "client_ip",
+            "user_agent",
+            "user_id",
+            "role",
+        ):
             if hasattr(record, key):
                 payload[key] = getattr(record, key)
 

@@ -3,6 +3,7 @@ Metrics endpoints.
 
 Provides aggregated system metrics for analysis.
 Restricted to operator, analyst and admin roles.
+Snapshot of HTTP request/error counters and uptime included.
 """
 
 from datetime import datetime
@@ -14,7 +15,8 @@ from app.infra.db.session import get_db
 from app.api.deps import require_roles
 from app.api.schemas.metrics import MetricsResponse
 from app.infra.db.repositories.metrics_repo import get_metrics
-
+from app.core.http_metrics import snapshot as http_snapshot
+from app.core.http_metrics import routes_snapshot
 
 router = APIRouter(prefix="/api/v1", tags=["metrics"])
 
@@ -45,5 +47,10 @@ def metrics(
         source_id=source_id,
         top_n=top_n,
     )
+
+    # Adiciona snapshot das métricas HTTP atuais
+    data = get_metrics(db, date_from=df, date_to=dt, source_id=source_id, top_n=top_n)
+    data["http"] = http_snapshot()
+    data["http_routes"] = routes_snapshot()
 
     return data

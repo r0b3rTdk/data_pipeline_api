@@ -14,7 +14,7 @@ from app.infra.db.repositories.security_event_repo import create_security_event
 from app.infra.db.repositories.user_repo import get_user_by_id
 from app.infra.db.session import get_db
 
-
+# Dependencia para autenticação de fontes via API key
 def require_api_key_for_ingest(
     request: Request,
     db: Session,
@@ -66,7 +66,7 @@ def require_api_key_for_ingest(
     # Autenticação OK → retorna a fonte autenticada
     return src
 
-
+# Dependencia para autenticacao de usuarios via JWT
 def get_current_user(
     db: Session = Depends(get_db),
     authorization: str | None = Header(default=None),
@@ -107,18 +107,22 @@ def get_current_user(
 
     return user
 
-
+# Gerador de dependencia para autorizacao baseada em papeis (RBAC)
 def require_roles(allowed: list[str]):
     # Conjunto de papéis permitidos
     allowed_set = set(allowed)
 
-    def _dep(user=Depends(get_current_user)):
+    def _dep(request: Request, user=Depends(get_current_user)):
         # Verifica se o papel do usuário é permitido
         if user.role not in allowed_set:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="forbidden",
             )
+            
+        # Contexto do usuário para observabilidade (sem logar token)
+        request.state.user_id = getattr(user, "id", None)
+        request.state.role = getattr(user, "role", None)
         return user
 
     return _dep

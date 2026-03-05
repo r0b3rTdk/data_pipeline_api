@@ -4,6 +4,31 @@ Este changelog registra as entregas por fase do projeto.
 
 ---
 
+---
+
+## [Fase 9] — Observabilidade
+### Adicionado
+- Endpoint de readiness:
+  - `GET /api/v1/ready` com verificação de banco (`SELECT 1`) e retorno `503` quando DB falha.
+- Métricas operacionais em `GET /api/v1/metrics` (bloco `http`):
+  - `uptime_seconds`, `requests_total`, `errors_4xx_total`, `errors_5xx_total`.
+- Latência por rota em `GET /api/v1/metrics` (bloco `http_routes`):
+  - contagem e média de latência por rota no formato `"METHOD /path": {count, avg_ms}`.
+- Logs estruturados (JSON) enriquecidos por request:
+  - `client_ip`, `user_agent`, `user_id`, `role` (quando autenticado), além de `request_id` e `process_time_ms`.
+- Testes da fase (Pytest):
+  - validação de `/ready` (200/503), propagação de headers `X-Request-Id` e `X-Process-Time-Ms`,
+  - validação de `/metrics` incluindo `http` e `http_routes`.
+
+### Alterado
+- Middleware de request_id ajustado para registrar métricas HTTP e por rota a cada request (contadores in-memory).
+
+### Observações
+- Métricas operacionais (`http` e `http_routes`) são **in-memory** e reiniciam junto com o processo/container.
+- Documentação da fase:
+  - `docs/09_fase9_observabilidade.md`
+  - `docs/99_troubleshooting_fase9.md`
+
 ## [Fase 8] Deploy / Produção (Docker + Nginx) — Produção-Lite
 
 ### Adicionado

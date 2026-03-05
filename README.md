@@ -1,101 +1,123 @@
-# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES) + Segurança + Front 
+# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES)
 
-Plataforma mínima e funcional para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** via API — com **segurança** (API Key por fonte), **login JWT**, **RBAC**, **auditoria**, **security events**, **request-id**, **métricas simples** e **testes mínimos**.
+API e front-end mínimos (e funcionais) para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** — com camadas de **segurança** e **observabilidade** pensadas para uso real.
 
 ---
 
-## Visão rápida
+## Visão geral
 
-### Fluxo de ingestão (RAW → TRUSTED / REJECTION)
-**Endpoint:** `POST /api/v1/ingest`
+### Fluxo (RAW → TRUSTED / REJECTION)
 
-1) **Auth por fonte (Fase 4/5):** exige `X-API-Key` e valida contra `source_system.api_key_hash`  
-2) **Pipeline:** grava **RAW** sempre → se válido grava **TRUSTED** → se inválido grava **REJECTION(s)** → se repetido retorna **DUPLICATE**  
+1. **Ingestão** recebe eventos via endpoint protegido por **API Key por fonte**.
+2. Cada item é validado e normalizado.
+3. Itens válidos seguem para **TRUSTED** (banco relacional).
+4. Itens inválidos ou inconsistentes geram um registro em **REJEIÇÕES** com motivo e payload original.
+5. Endpoints de consulta permitem inspecionar TRUSTED/REJEIÇÕES.
+
+### O que este projeto entrega
+
+- **Ingestão** com validação e **idempotência/deduplicação**
+- **Persistência** (PostgreSQL) + **migrations** (Alembic)
+- **Rejeições** com rastreabilidade (motivo + payload)
+- **Segurança**
+  - API Key por fonte (hash no banco)
+  - Login **JWT**
+  - **RBAC** (perfis/permissões por rota)
+  - **Auditoria** + **security events**
+- **Observabilidade**
+  - `X-Request-Id` (propagado)
+  - `X-Process-Time-Ms`
+  - endpoint `/metrics` simples
+  - health e readiness (inclui check de DB)
+- **Front (Fase 7)** com login e telas de consulta
 
 ### Stack
-- **FastAPI**
-- **Postgres (Docker)**
-- **SQLAlchemy + Alembic**
-- **Auth:** API Key (por source) + **JWT** (login de usuário)
-- **RBAC** (roles)
-- **Auditoria:** `audit_log`
-- **Security events:** `security_event`
-- **Observabilidade:** `x-request-id` + `x-process-time-ms` + `/metrics`
-- **Testes mínimos:** `pytest`
+
+- **FastAPI** + Uvicorn
+- **PostgreSQL**
+- **SQLAlchemy**
+- **Alembic**
+- Docker + Docker Compose
+- Nginx (modo produção-lite)
 
 ---
 
 ## Como rodar (Docker)
 
-### 1) Subir serviços
+> **URLs locais (Docker):** por padrão, a API sobe em `http://localhost:8000`.
+> Se você estiver usando um container **nginx** na frente (opcional), o acesso pode ser via `http://localhost` (porta 80).
+
+
+
+> Pré-requisitos: Docker e Docker Compose.
+
+### 1) Subir os serviços
+
 ```bash
 docker compose up -d --build
 ```
 
 ### 2) Health
-```powershell
-Invoke-RestMethod -Method Get "http://localhost:8000/api/v1/health"
-```
 
-### 3) OpenAPI
-- `http://localhost:8000/docs`
-- `http://localhost:8000/openapi.json`
-
-### 4) (Opcional) Logs
 ```bash
-docker compose logs -n 200 api
-docker compose logs -n 200 db
+curl -i http://localhost:8000/api/v1/health
 ```
 
+### 3) Readiness (com checks)
+
+```bash
+curl -i http://localhost:8000/api/v1/ready
+```
+
+### 4) OpenAPI (Swagger)
+
+- `http://localhost:8000/docs`
+
+### 5) Logs (opcional)
+
+```bash
+docker compose logs -f api
+```
 
 ---
 
-## Como rodar o Front (Fase 7)
+## Front-end
 
 ### Opção 1 — Dev simples (recomendado)
-1) Suba a API normalmente (Docker):
+
+> Ajuste os comandos abaixo para a pasta do front (se necessário).
+
 ```bash
-docker compose up -d
+cd front
+npm install
+npm run dev
 ```
 
-2) Suba o front (estático) em outro terminal:
-```bash
-cd frontend
-python -m http.server 3000
-```
+### Login (JWT) no front
 
-Acesse:
-- Front: http://localhost:3000
-- API: http://localhost:8000/docs
+- Faça login pela UI.
+- O front armazena o token e o envia no `Authorization: Bearer <token>`.
 
-> **Config**: `frontend/config.js` → `API_BASE_URL` (padrão: `http://localhost:8000`)
+### Telas principais
 
-### Login (JWT) no Front
-- Tela chama: `POST /api/v1/auth/login`
-- Token é salvo no `localStorage` em `p01_access_token`
-- Se a API retornar `401`, o front limpa o token e volta para `#/login`
-
-### Telas do Front
-- Dashboard: `#/dashboard` (KPIs via `GET /api/v1/metrics`)
-- Trusted: `#/trusted` (lista + detalhes)
-- Rejections: `#/rejections` (lista + detalhes)
-- Security Events: `#/security-events` (lista + filtros: `severity`, `event_type`)
-- Audit Logs: `#/audit` (lista + filtros: `action`, `entity_type`, `user_id`)
+- **Login**
+- **TRUSTED** (consulta/listagem)
+- **REJEIÇÕES** (consulta/listagem)
 
 ---
 
----
+## Configuração
 
-## Variáveis de ambiente
+### Variáveis de ambiente
 
 Crie um `.env` baseado no `.env.example`.
 
-Exemplo de `.env.example`:
+Exemplo (referência):
+
 ```env
 DATABASE_URL=postgresql+psycopg://appuser:apppass@db:5432/appdb
 APP_ENV=local
 
-# JWT
 JWT_SECRET=change-me
 JWT_ALG=HS256
 JWT_EXPIRES_MIN=60
@@ -105,459 +127,111 @@ JWT_EXPIRES_MIN=60
 
 ---
 
-## Migrations (Alembic)
+## Banco e migrations (Alembic)
 
 Aplicar migrations (dentro do container da API):
+
 ```bash
 docker compose exec api sh -c "alembic upgrade head"
 ```
 
 Criar revision:
+
 ```bash
 docker compose exec api alembic revision -m "mensagem"
 ```
 
-Ver tabelas:
+---
+
+## Segurança
+
+### 1) API Key por fonte
+
+**Conceito:** cada *source* possui uma API Key. A API recebe a chave e compara com o **hash** persistido no banco.
+
+#### Gerar API Key + Hash (dentro do container)
+
 ```bash
-docker compose exec db psql -U appuser -d appdb -c "\dt"
+docker compose exec api python -m app.scripts.generate_api_key
 ```
 
-### Estrutura de migrations
-- `app/infra/db/migrations/versions/`
+> Guarde a API Key com segurança. O banco deve armazenar apenas o **hash**.
 
-> Importante: mantenha as migrations no código do Windows (repo). Não confie em migrations criadas só “dentro do container”.
+#### Salvar o hash no banco (para uma source existente)
+
+Use o script/rota prevista no projeto (ou rode a atualização no DB conforme o guia do projeto).  
+A ideia é: **DB guarda hash** → cliente envia **API Key** → API valida.
+
+### 2) Login — JWT
+
+#### Login
+
+- Endpoint de login retorna um JWT.
+- Demais rotas protegidas exigem `Authorization: Bearer <token>`.
+
+### 3) RBAC
+
+- Perfis e permissões restringem o acesso por rota (ex.: operador, admin etc.).
+- Retornos **403** quando o papel não tem permissão.
+
+### 4) Auditoria e security events
+
+- Ações sensíveis (ex.: patch em TRUSTED, rejeições e operações administrativas) geram auditoria.
+- Eventos de segurança (ex.: tentativas inválidas, violações) são registrados para investigação.
 
 ---
 
-## Autenticação por API Key (por fonte)
+## Endpoints (referência)
 
-### Conceito
-- Cada integração/fonte fica em `source_system` com `name`, `status` e `api_key_hash`.
-- O cliente envia a API Key em texto puro no header `X-API-Key`.
-- A API **não salva a key**, apenas o **hash** (`sha256` hex) em `source_system.api_key_hash`.
+> A lista completa está no Swagger: `http://localhost:8000/docs`.
 
-### Gerar API Key + Hash (dentro do container da API)
-```bash
-docker compose exec api python -c "from app.core.security import generate_api_key, hash_api_key; k=generate_api_key('src'); print('API_KEY='+k); print('HASH='+hash_api_key(k))"
-```
-
-### Salvar o HASH no banco (para uma source existente)
-Exemplo: `partner_a`
-```bash
-docker compose exec db psql -U appuser -d appdb -c "UPDATE source_system SET api_key_hash = '<COLE_O_HASH_AQUI>' WHERE name = 'partner_a';"
-```
-
-Confirmar:
-```bash
-docker compose exec db psql -U appuser -d appdb -c "SELECT id, name, status, api_key_hash FROM source_system WHERE name='partner_a';"
-```
+- **Health:** `GET /api/v1/health`
+- **Readiness:** `GET /api/v1/ready`
+- **Métricas:** `GET /api/v1/metrics`
+- **Ingestão (API Key):** `POST /api/v1/ingest`
+- **Login (JWT):** `POST /api/v1/auth/login`
+- **Consultas:** rotas de TRUSTED e REJEIÇÕES (ver Swagger)
 
 ---
 
-## Auth (login) — JWT
+## Observabilidade
 
-### Login
-```powershell
-$loginBody = @{ username="admin"; password="Admin@123" } | ConvertTo-Json
-
-$resp = Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8000/api/v1/auth/login" `
-  -ContentType "application/json" `
-  -Body $loginBody
-
-$token = $resp.access_token
-$headers = @{ Authorization = "Bearer $token" }
-```
+- `X-Request-Id`
+  - Se o cliente enviar `X-Request-Id`, a API propaga.
+  - Se não enviar, a API gera um novo.
+- `X-Process-Time-Ms` em respostas (latência do processamento)
+- `/metrics` com contadores básicos
+- `/ready` valida “API ok” + “DB ok”
 
 ---
 
-## RBAC (permissões por endpoint)
+## Deploy (produção-lite)
 
-Sugestão de matriz (ajuste conforme sua config):
-- `GET /api/v1/trusted` → `operator`, `analyst`, `admin`
-- `GET /api/v1/rejections` → `analyst`, `admin`
-- `PATCH /api/v1/trusted/{trusted_id}` → `admin`
-- `GET /api/v1/audit` → `auditor`, `admin`
-- `GET /api/v1/security-events` → `auditor`, `admin`
-- `GET /api/v1/metrics` → `admin` (ou conforme sua config)
+Este projeto inclui um cenário de deploy com **Docker Compose** e **Nginx** como reverse proxy:
 
----
+- Nginx → API (Uvicorn/FastAPI)
+- PostgreSQL com volume
+- Healthchecks para estabilização do stack
 
-## Endpoints
+### HTTPS (futuro)
 
-### Health
-- `GET /api/v1/health` → `{"status":"ok"}`
+O bloco HTTPS do Nginx pode ser habilitado quando houver domínio público:
 
-### Ingestão (protegida por API Key)
-- `POST /api/v1/ingest`
-
-**Regras de negócio do event_type:**
-- Tipos permitidos (ALLOWED_TYPES): `ORDER`, `PAYMENT`, `SHIPMENT`
-
-#### Exemplo (PowerShell) — SUCESSO (Ingest)
-```powershell
-$headersIngest = @{ "X-API-Key" = "SUA_API_KEY_AQUI" }
-
-$body_ok_obj = @{
-  source = "partner_a"
-  external_id = "ext-OK-" + (Get-Random)
-  entity_id = "ent-OK-010"
-  event_status = "NEW"
-  event_timestamp = "2026-02-10T00:00:00Z"
-  event_type = "ORDER"
-  severity = "low"
-  payload = @{ a = 1 }
-}
-
-$body_ok = $body_ok_obj | ConvertTo-Json -Depth 10
-
-Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8000/api/v1/ingest" `
-  -Headers $headersIngest `
-  -ContentType "application/json" `
-  -Body $body_ok
-```
-
-**Respostas esperadas:**
-- `ACCEPTED` → cria RAW e TRUSTED
-- `DUPLICATE` → cria RAW e retorna duplicado (sem novo TRUSTED)
-- `REJECTED` → cria RAW e REJECTION(s)
-
-#### Exemplo — NEGATIVO (sem header)
-```powershell
-Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8000/api/v1/ingest" `
-  -ContentType "application/json" `
-  -Body $body_ok
-```
-Esperado: `401` com `{"detail":"missing X-API-Key"}` + grava em `security_event`.
-
-#### Exemplo — NEGATIVO (API Key inválida)
-```powershell
-$headers_bad = @{ "X-API-Key" = "INVALIDA" }
-
-Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8000/api/v1/ingest" `
-  -Headers $headers_bad `
-  -ContentType "application/json" `
-  -Body $body_ok
-```
-Esperado: `401` com `{"detail":"invalid api key"}` + grava em `security_event`.
-
----
-
-## Consultas (TRUSTED / REJEIÇÕES)
-
-### GET TRUSTED (paginado)
-- `GET /api/v1/trusted?page=1&page_size=50`
-```powershell
-Invoke-RestMethod -Method Get `
-  -Uri "http://localhost:8000/api/v1/trusted?page=1&page_size=50" `
-  -Headers $headers
-```
-
-### GET REJEIÇÕES (paginado)
-- `GET /api/v1/rejections?page=1&page_size=50`
-```powershell
-Invoke-RestMethod -Method Get `
-  -Uri "http://localhost:8000/api/v1/rejections?page=1&page_size=50" `
-  -Headers $headers
-```
-
----
-
-## PATCH TRUSTED (auditoria)
-
-- `PATCH /api/v1/trusted/{trusted_id}`
-```powershell
-$patchBody = @{ reason="corrigir status"; event_status="APPROVED" } | ConvertTo-Json
-
-Invoke-RestMethod -Method Patch `
-  -Uri "http://localhost:8000/api/v1/trusted/5" `
-  -Headers $headers `
-  -ContentType "application/json" `
-  -Body $patchBody
-```
-
----
-
-## Auditoria (audit_log)
-
-- `GET /api/v1/audit?page=1&page_size=50`
-```powershell
-Invoke-RestMethod -Method Get `
-  -Uri "http://localhost:8000/api/v1/audit?page=1&page_size=50" `
-  -Headers $headers
-```
-
----
-
-## Security Events (security_event)
-
-Quando autenticação falha (API Key/JWT/RBAC), a API registra eventos (ex.: `AUTH_FAILED`, severidade `HIGH`).
-
-### API
-- `GET /api/v1/security-events?severity=HIGH&event_type=AUTH_FAILED&page=1&page_size=50`
-```powershell
-Invoke-RestMethod -Method Get `
-  -Uri "http://localhost:8000/api/v1/security-events?severity=HIGH&event_type=AUTH_FAILED&page=1&page_size=50" `
-  -Headers $headers
-```
-
-### SQL (últimos eventos)
-```bash
-docker compose exec db psql -U appuser -d appdb -c "SELECT id, event_type, severity, source_id, user_id, ip, user_agent, request_id, details, created_at FROM security_event ORDER BY id DESC LIMIT 10;"
-```
-
----
-
-## Métricas (observabilidade básica)
-
-- `GET /api/v1/metrics`
-```powershell
-Invoke-RestMethod -Method Get `
-  -Uri "http://localhost:8000/api/v1/metrics" `
-  -Headers $headers
-```
-
----
-
-## Headers de rastreio (Request ID)
-
-Toda resposta inclui:
-- `x-request-id`
-- `x-process-time-ms`
-
-Use `x-request-id` para rastrear logs/auditoria/security_event.
+1. Apontar DNS (registro A) para o IP do servidor
+2. Ajustar `server_name` no Nginx
+3. Gerar certificado (ex.: Certbot)
+4. Ativar `listen 443 ssl`
+5. Validar `https://SEU_DOMINIO/api/v1/health`
 
 ---
 
 ## Testes
 
-Rodar dentro do container:
 ```bash
 docker compose exec -e PYTHONPATH=/app api pytest -q
 ```
 
 ---
-
-## Estrutura do projeto (essencial)
-
-- `app/main.py` — cria `app = FastAPI()` e registra routers
-- `app/api/routes/*` — rotas (ingest, trusted, rejections, auth, audit, security-events, metrics, health)
-- `app/api/schemas/*` — schemas de request/response
-- `app/services/*` — regra de negócio (pipeline ingest)
-- `app/api/deps.py` — deps de autenticação/segurança (API key, JWT, roles)
-- `app/infra/db/*` — models, session, repositories
-- `app/infra/db/migrations/*` — Alembic
-
----
-
-## Documentação
-
-- `docs/07_fase7_front_dashboard.md` — como rodar e usar o Front (Fase 7)
-- `docs/99_troubleshooting_fase7.md` — erros comuns do Front (CORS, 401, base url, etc)
-
-## Troubleshooting (PowerShell)
-
-- **`curl` no PowerShell** é alias de `Invoke-WebRequest` → prefira `Invoke-RestMethod` ou `curl.exe`.
-- Se aparecer **`{"detail":[{"loc":["body"],"msg":"Field required"}]}`**, geralmente `$body_*` está `null` ou você passou objeto em vez de JSON string.
-  - Sempre: `$body = $obj | ConvertTo-Json -Depth 10`
-- Para SQL / `\d` do Postgres: use `psql -c "..."` (não rode SQL direto no PowerShell).
-- Veja também: `docs/99_troubleshooting_fase5.md`
-
----
-
-## Definition of Done
-
-### Fase 4 (Security + base)
-- `POST /api/v1/ingest`:
-  - sem `X-API-Key` → `401` (sem 500) + grava `security_event`
-  - key inválida → `401` (sem 500) + grava `security_event`
-  - key válida → fluxo `ACCEPTED/DUPLICATE/REJECTED`
-- Tabelas no Postgres:
-  - `source_system`, `raw_ingestion`, `trusted_event`, `rejection`, `user_account`, `security_event`, `alembic_version`
-- `GET /api/v1/trusted`, `GET /api/v1/rejections`, `GET /api/v1/health` funcionando
-- Docker sobe com `docker compose up -d --build`
-
-### Fase 6 (Hardening leve)
-- Logs em JSON
-- Seed idempotente (admin + source default)
-- Headers de segurança básicos
-- Testes passando no container
-
-### Fase 7 (Front Admin)
-- Front roda em `http://localhost:3000` e consome API em `http://localhost:8000`
-- Login JWT no front + armazenamento de token
-- Dashboard (metrics) + Trusted + Rejections + Security Events (filtros) + Audit Logs (filtros)
-
-### Fase 5 (Auth JWT + RBAC + observabilidade + testes)
-- `POST /api/v1/auth/login` retorna `access_token` JWT
-- RBAC aplicado conforme matriz (ou equivalente)
-- `PATCH /api/v1/trusted/{id}` registra `audit_log`
-- `GET /api/v1/audit` e `GET /api/v1/security-events` funcionam com autorização
-- Respostas incluem `x-request-id` e `x-process-time-ms`
-- `/metrics` disponível e protegido
-- `pytest -q` roda (mínimo) sem falhas no container
-
----
-
-
----
-
-# README — trecho Fase 8 (Deploy / Produção-Lite)
-
-## Deploy (Produção-Lite) — Docker + Nginx
-
-> Esta etapa disponibiliza a API em servidor Linux com **Docker Compose + Nginx** em modo **produção-lite** (HTTP).  
-> A estrutura para HTTPS com Certbot foi preparada para ativação futura quando houver domínio.
-
-### Arquivos principais
-- `docker-compose.prod.yml`
-- `deploy/nginx/default.conf`
-- `.env.prod.example`
-
----
-
-## 1) Preparar servidor (Ubuntu)
-
-### Clonar projeto
-```bash
-sudo mkdir -p /opt/projeto01
-sudo chown $USER:$USER /opt/projeto01
-git clone https://github.com/r0b3rTdk/data_pipeline_api /opt/projeto01
-cd /opt/projeto01
-```
-
-### Criar `.env.prod`
-```bash
-cp .env.prod.example .env.prod
-nano .env.prod
-```
-
-> Preencha com valores fortes para:
-> - `POSTGRES_PASSWORD`
-> - `JWT_SECRET`
-> - `SEED_ADMIN_PASSWORD`
-> - `SEED_SOURCE_API_KEY`
-
-### (Opcional, recomendado no servidor) criar `.env` para o Compose
-Algumas versões/fluxos do Docker Compose podem emitir warning de interpolação (`POSTGRES_PASSWORD`).
-Para evitar isso no servidor:
-
-```bash
-cp .env.prod .env
-```
-
----
-
-## 2) Subir ambiente de produção-lite
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-docker compose -f docker-compose.prod.yml ps
-```
-
-Esperado:
-- `db` → healthy
-- `api` → healthy
-- `nginx` → running
-
----
-
-## 3) Aplicar migrations e seed
-
-### Migrations
-```bash
-docker compose -f docker-compose.prod.yml exec api alembic upgrade head
-```
-
-### Seed (primeira vez)
-```bash
-docker compose -f docker-compose.prod.yml exec api python -m app.scripts.seed
-```
-
----
-
-## 4) Testes rápidos em produção-lite (HTTP via Nginx)
-
-### Health
-```bash
-curl -i http://localhost/api/v1/health
-```
-
-### Login (JWT)
-```bash
-curl -i -X POST http://localhost/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"SUA_SENHA_DO_SEED"}'
-```
-
-### Ingest com API Key
-```bash
-curl -i -X POST http://localhost/api/v1/ingest \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: SUA_SEED_SOURCE_API_KEY" \
-  -d '{
-    "source": "partner_a",
-    "external_id": "ext-prod-test-001",
-    "entity_id": "ent-001",
-    "event_status": "NEW",
-    "event_timestamp": "2026-02-24T00:00:00Z",
-    "event_type": "ORDER",
-    "severity": "low",
-    "payload": {"test": true}
-  }'
-```
-
----
-
-## 5) Logs e operação
-
-### Status
-```bash
-docker compose -f docker-compose.prod.yml ps
-```
-
-### Logs
-```bash
-docker compose -f docker-compose.prod.yml logs -n 200 nginx
-docker compose -f docker-compose.prod.yml logs -n 200 api
-docker compose -f docker-compose.prod.yml logs -n 200 db
-```
-
-### Restart
-```bash
-docker compose -f docker-compose.prod.yml restart
-```
-
-> Após `restart`, pode haver alguns segundos de indisponibilidade enquanto `db/api` voltam e os healthchecks estabilizam.
-
----
-
-## 6) HTTPS (futuro)
-
-O bloco HTTPS do Nginx foi preparado, mas **não ativado nesta fase** por ausência de domínio público.
-
-Quando houver domínio:
-1. Apontar DNS (registro A) para IP do servidor
-2. Ajustar `server_name` no Nginx
-3. Gerar certificado com Certbot
-4. Reativar bloco `listen 443 ssl`
-5. Validar `https://SEU_DOMINIO/api/v1/health`
-
----
-
-## 7) Status da Fase 8
-
-Entregue em modo **produção-lite**:
-- Deploy com Docker Compose (prod)
-- Nginx reverse proxy
-- Banco persistente com volume
-- Login JWT via Nginx
-- Ingest com API key via Nginx
-- Estrutura pronta para HTTPS futuro
-
 
 ## Autor
 

@@ -15,6 +15,7 @@ from app.api.routes import ingest
 from app.api.routes import audit
 from app.api.routes import security_events
 from app.api.routes import metrics
+from app.api.routes import ready
 
 
 # Router principal da API
@@ -29,3 +30,4 @@ api_router.include_router(ingest.router)
 api_router.include_router(audit.router)
 api_router.include_router(security_events.router)
 api_router.include_router(metrics.router)
+api_router.include_router(ready.router)
