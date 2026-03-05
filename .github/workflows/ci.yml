@@ -54,7 +54,7 @@ jobs:
 
       - name: Run lint (flake8)
         run: |
-          flake8 app tests # Falha o CI se o padrão de código estiver ruim
+          flake8 app 
 
       - name: Run database migrations
         run: |
