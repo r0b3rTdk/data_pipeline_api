@@ -3,7 +3,46 @@
 Este changelog registra as entregas por fase do projeto.
 
 ---
+## [Fase 11] — Security Hardening Avançado
 
+### Adicionado
+- Rate limiting real com **SlowAPI**:
+  - integração via middleware (`SlowAPIMiddleware`) + handler de `RateLimitExceeded`
+  - limite configurável via `LOGIN_RATE_LIMIT` (ex.: `5/minute` no `/auth/login`)
+- Proteção contra brute force (in-memory) por IP no login:
+  - bloqueio após N tentativas (`MAX_ATTEMPTS`) com janela de bloqueio (`BLOCK_MINUTES`)
+  - reset automático do contador em login bem-sucedido
+- Refresh token JWT:
+  - login retorna `access_token` + `refresh_token`
+  - endpoint `POST /api/v1/auth/refresh` para emitir novo access token
+  - claim `typ` diferencia `access` vs `refresh`
+- Logs estruturados de autenticação:
+  - eventos: `login_success`, `login_failed`, `login_blocked`, `token_refresh`
+  - campos: `client_ip`, `user_agent`, `user_id`, `role`, `path`, `method`
+- Security headers avançados:
+  - `Strict-Transport-Security` (apenas em HTTPS)
+  - `Content-Security-Policy` (CSP)
+  - `X-XSS-Protection`
+
+### Alterado
+- `security.py` estendido para gerar e validar access/refresh tokens (com `typ`).
+- `auth` atualizado para aplicar rate limit + brute force + refresh token.
+- Testes ajustados para isolar estado de segurança:
+  - reset do brute force entre testes
+  - fixtures com IDs/names únicos para evitar conflito em DB persistente (Docker volume)
+
+### Testes
+- Cobertura de:
+  - rate limit no login (429)
+  - brute force (bloqueio após falhas)
+  - refresh token flow (login → refresh → novo access)
+  - regressão de login sucesso/falha
+
+### Documentação
+- `docs/11_fase11_security_hardening.md`
+- `docs/99_troubleshooting_fase11.md`
+
+---
 ---
 
 ## [Fase 10] — CI/CD (GitHub Actions)

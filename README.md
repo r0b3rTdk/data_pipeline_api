@@ -1,4 +1,4 @@
-# Projeto01 — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES)
+# Projeto — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES)
 
 API e front-end mínimos (e funcionais) para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** — com camadas de **segurança** e **observabilidade** pensadas para uso real.
 
@@ -144,6 +144,73 @@ docker compose exec api alembic revision -m "mensagem"
 ---
 
 ## Segurança
+
+### 2.1) Hardening (Fase 11)
+
+Nesta fase a API ganhou proteções adicionais típicas de produção:
+
+#### Rate limiting (SlowAPI)
+O endpoint de login possui limite de requisições por IP (configurável).
+
+- **Login:** `POST /api/v1/auth/login`
+- Variável: `LOGIN_RATE_LIMIT` (ex.: `5/minute`)
+
+> Em testes/CI pode ser útil usar um valor maior (ex.: `1000/minute`) para não conflitar com cenários de brute force.
+
+#### Proteção contra brute force (login)
+Além do rate limit, existe bloqueio por IP após falhas consecutivas de senha.
+
+- Após **5 tentativas** falhas (padrão), o IP é bloqueado temporariamente
+- Retorno: **429** com `too_many_login_attempts`
+
+#### Refresh Token (JWT)
+O login retorna **dois tokens**:
+
+- `access_token` (curto)
+- `refresh_token` (longo)
+
+**Login:** `POST /api/v1/auth/login`
+Retorna:
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "token_type": "bearer"
+}
+```
+
+**Refresh:** `POST /api/v1/auth/refresh`
+Envia:
+```json
+{
+  "refresh_token": "..."
+}
+```
+Retorna:
+```json
+{
+  "access_token": "...",
+  "token_type": "bearer"
+}
+```
+
+#### Security Headers avançados
+A API adiciona headers de segurança (além dos básicos), incluindo:
+- `Strict-Transport-Security` (somente em HTTPS)
+- `Content-Security-Policy` (CSP)
+- `X-XSS-Protection`
+
+> A política de CSP é mais permissiva nas rotas do Swagger (`/docs`, `/redoc`, `/openapi.json`) para não quebrar a UI.
+
+#### Logs de autenticação (eventos)
+Eventos de autenticação são logados de forma estruturada:
+- `login_success`
+- `login_failed`
+- `login_blocked`
+- `token_refresh`
+
+Campos comuns: `client_ip`, `user_agent`, `user_id`, `role`, `path`, `method`.
+
 
 ### 1) API Key por fonte
 

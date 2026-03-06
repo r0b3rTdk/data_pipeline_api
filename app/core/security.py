@@ -47,6 +47,23 @@ def create_access_token(*, sub: str, role: str, user_id: int, expires_min: Optio
     exp = now + timedelta(minutes=minutes)
 
     payload: dict[str, Any] = {
+        "typ": "access",
+        "sub": sub,
+        "role": role,
+        "uid": user_id,
+        "iat": int(now.timestamp()),
+        "exp": exp,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALG)
+
+
+def create_refresh_token(*, sub: str, role: str, user_id: int, days: Optional[int] = None) -> str:
+    refresh_days = days if days is not None else getattr(settings, "JWT_REFRESH_DAYS", 7)
+    now = datetime.now(timezone.utc)
+    exp = now + timedelta(days=refresh_days)
+
+    payload: dict[str, Any] = {
+        "typ": "refresh",
         "sub": sub,
         "role": role,
         "uid": user_id,

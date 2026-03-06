@@ -34,13 +34,22 @@ class Settings:
         self.CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "").strip()  # CSV
         self.MAX_BODY_BYTES: int = int(os.getenv("MAX_BODY_BYTES", "1000000"))  # 1MB
         
-        # Seed / Bootstrap (Fase 6)
+        # Seed / Bootstrap
         self.SEED_ON_STARTUP: bool = os.getenv("SEED_ON_STARTUP", "false").strip().lower() == "true"
         self.SEED_ADMIN_EMAIL: str = os.getenv("SEED_ADMIN_EMAIL", "admin@local").strip()
         self.SEED_ADMIN_PASSWORD: str = os.getenv("SEED_ADMIN_PASSWORD", "admin123").strip()
         self.SEED_SOURCE_NAME: str = os.getenv("SEED_SOURCE_NAME", "partner_a").strip()
         self.SEED_SOURCE_API_KEY: str = os.getenv("SEED_SOURCE_API_KEY", "partner_a_key_change_me").strip()
         
+        # Refresh token
+        self.JWT_REFRESH_DAYS: int = int(os.getenv("JWT_REFRESH_DAYS", "7"))
+
+        # Brute force
+        self.LOGIN_MAX_ATTEMPTS: int = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
+        self.LOGIN_BLOCK_MINUTES: int = int(os.getenv("LOGIN_BLOCK_MINUTES", "10"))
+
+        # Rate limit
+        self.LOGIN_RATE_LIMIT: str = os.getenv("LOGIN_RATE_LIMIT", "5/minute").strip()
         
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "").strip()
 

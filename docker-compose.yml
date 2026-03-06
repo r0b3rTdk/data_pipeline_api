@@ -23,10 +23,11 @@ services:
     volumes:
       - ./:/app
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_ALG=${JWT_ALG}
-      - JWT_EXPIRES_MIN=${JWT_EXPIRES_MIN}
-      - PYTHONPATH=/app
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALG: ${JWT_ALG}
+      JWT_EXPIRES_MIN: ${JWT_EXPIRES_MIN}
+      PYTHONPATH: /app
+      LOGIN_RATE_LIMIT: "1000/minute"
     
 # === Persistent volumes ===
 volumes:

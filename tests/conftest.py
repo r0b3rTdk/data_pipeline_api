@@ -5,13 +5,14 @@ Test configuration.
 - Overrides FastAPI dependency injection
 - Provides helpers for authentication tests
 """
-import os
 
-import pytest
+import os
 import json
 import hashlib
 from datetime import datetime, timezone
-import uuid
+from uuid import uuid4
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
@@ -19,12 +20,13 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.infra.db.session import get_db
 from app.core.security import hash_password
+from app.core.login_attempts import reset_all
 
 from app.infra.db.models.user_account import UserAccount
-
 from app.infra.db.models.trusted_event import TrustedEvent
 from app.infra.db.models.source_system import SourceSystem
 from app.infra.db.models.raw_ingestion import RawIngestion
+
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -42,10 +44,10 @@ def db_session():
     sem quebrar o rollback do teste.
     """
     db = SessionLocal()
-    
+
     # SAVEPOINT para o teste
     db.begin_nested()
-    
+
     # Se o código fizer commit, o savepoint fecha.
     # Este listener recria um novo savepoint automaticamente.
     @event.listens_for(db, "after_transaction_end")
@@ -74,6 +76,16 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def _reset_login_attempts():
+    """
+    Limpa o estado de brute force entre testes (in-memory).
+    """
+    reset_all()
+    yield
+    reset_all()
+
+
 def ensure_user(db, username: str, password: str, role: str):
     u = db.query(UserAccount).filter(UserAccount.username == username).one_or_none()
     if not u:
@@ -98,11 +110,12 @@ def login(client: TestClient, username: str, password: str) -> str:
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
 
+
 @pytest.fixture()
 def trusted_event(db_session):
-    # 1) SourceSystem (sem is_active)
+    # 1) SourceSystem (nome único pra não bater UNIQUE em DB persistente)
     source = SourceSystem(
-        name="ci-source",
+        name=f"ci-source-{uuid4().hex}",
         # status tem default "active", pode omitir
     )
     db_session.add(source)
@@ -115,12 +128,12 @@ def trusted_event(db_session):
 
     raw = RawIngestion(
         source_id=source.id,
-        external_id="raw-ci-1",
+        external_id=f"raw-ci-{uuid4().hex}",
         event_timestamp=datetime.now(timezone.utc),
         payload_raw=payload_raw,
         payload_hash=payload_hash,
-        request_id=str(uuid.uuid4()),
-        # os opcionais (client_ip/user_agent) podem ficar sem
+        request_id=str(uuid4()),
+        # opcionais (client_ip/user_agent) podem ficar vazios
     )
     db_session.add(raw)
     db_session.flush()
@@ -129,7 +142,7 @@ def trusted_event(db_session):
     t = TrustedEvent(
         raw_ingestion_id=raw.id,
         source_id=source.id,
-        external_id="trusted-ci-1",
+        external_id=f"trusted-ci-{uuid4().hex}",
         entity_id="ent-1",
         event_type="ORDER",
         event_status="NEW",

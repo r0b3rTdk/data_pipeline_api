@@ -22,11 +22,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.middleware.security_headers import SecurityHeadersMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# === Rate Limiting ===
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+from app.core.rate_limit import limiter
+
 # Configura logging estruturado
 setup_logging(settings.LOG_LEVEL)
 
 # Instância principal da aplicação FastAPI
 app = FastAPI(title="Data Pipeline API")
+
+# === Rate limit (SlowAPI) ===
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Middleware: security headers
 app.add_middleware(SecurityHeadersMiddleware)
