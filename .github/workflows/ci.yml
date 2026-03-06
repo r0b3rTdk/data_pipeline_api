@@ -34,6 +34,7 @@ jobs:
       JWT_SECRET: test_secret_key
       JWT_ALG: HS256
       JWT_EXPIRES_MIN: 30
+      LOGIN_RATE_LIMIT: 1000/minute
       PYTHONPATH: .
 
     steps:
