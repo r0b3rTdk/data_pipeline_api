@@ -71,18 +71,40 @@ def login(
     
      # Brute force block
     if is_blocked(ip):
-        logger.info("login_blocked", extra={"client_ip": ip, "user_agent": ua, "path": str(request.url.path), "method": request.method})
+        logger.info(
+            "login_blocked", 
+            extra={
+                "client_ip": ip, 
+                "user_agent": ua, 
+                "path": str(request.url.path), 
+                "method": request.method}
+        )
         raise HTTPException(status_code=429, detail="too_many_login_attempts")
 
     user = get_user_by_username(db, payload.username)
     if not user or not user.is_active:
         register_failure(ip)
-        logger.info("login_failed", extra={"client_ip": ip, "user_agent": ua, "path": str(request.url.path), "method": request.method})
+        logger.info(
+            "login_failed", 
+            extra={
+                "client_ip": ip, 
+                "user_agent": ua, 
+                "path": str(request.url.path), 
+                "method": request.method}
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
     if not verify_password(payload.password, user.password_hash):
         register_failure(ip)
-        logger.info("login_failed", extra={"client_ip": ip, "user_agent": ua, "user_id": int(user.id), "path": str(request.url.path), "method": request.method})
+        logger.info(
+            "login_failed", 
+            extra={
+                "client_ip": ip, 
+                "user_agent": ua, 
+                "user_id": int(user.id), 
+                "path": str(request.url.path), 
+                "method": request.method}
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
 
     # sucesso → reseta brute force
@@ -116,11 +138,25 @@ def refresh_token(
     try:
         data = decode_token(payload.refresh_token)
     except ValueError:
-        logger.info("token_refresh_failed", extra={"client_ip": ip, "user_agent": ua, "path": str(request.url.path), "method": request.method})
+        logger.info(
+            "token_refresh_failed", 
+            extra={
+                "client_ip": ip, 
+                "user_agent": ua, 
+                "path": str(request.url.path), 
+                "method": request.method}
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
 
     if data.get("typ") != "refresh":
-        logger.info("token_refresh_failed", extra={"client_ip": ip, "user_agent": ua, "path": str(request.url.path), "method": request.method})
+        logger.info(
+            "token_refresh_failed", 
+            extra={
+                "client_ip": ip, 
+                "user_agent": ua, 
+                "path": str(request.url.path), 
+                "method": request.method}
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token_type")
 
     # Emissão de novo access token
