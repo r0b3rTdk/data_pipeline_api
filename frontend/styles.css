@@ -101,6 +101,12 @@ body{
   line-height:1.2;
 }
 
+/* Quebra textos longos no topo (evita estourar em telas pequenas) */
+.titles .title,
+.titles .subtitle{
+  word-break: break-word;
+}
+
 /* =========================
    5) NAV (links do topo)
    =========================
@@ -329,7 +335,9 @@ table{
   width:100%;
   border-collapse:collapse;
   font-size:14px;
-  min-width: 760px;            /* força scroll horizontal em telas pequenas */
+
+  /* Evita “esmagar” colunas; em telas menores, use .table-wrap para scroll */
+  min-width: 760px;
 }
 
 table th,
@@ -345,27 +353,60 @@ table th{
   font-weight:700;
 }
 
+/* Wrapper de tabela: cria scroll horizontal no mobile sem quebrar layout */
+.table-wrap{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch; /* scroll suave no iOS */
+}
+
+.table-wrap table{
+  min-width: 760px;            /* largura mínima para manter legibilidade */
+}
+
 /* Blocos de código/logs: não corta conteúdo */
 pre{
   overflow:auto;
 }
 
 /* =========================
-   17) RESPONSIVIDADE (ajustes)
+   17) CORRIGIR ZOOM NO CELULAR (iOS)
+   =========================
+   iOS dá zoom automático quando input tem font-size < 16px.
+   Forçando 16px, evita esse comportamento.
+*/
+input,
+select,
+textarea,
+button{
+  font-size: 16px;
+}
+
+/* Reforço para seus componentes custom (.input / .btn) */
+.input,
+.btn,
+select.input,
+textarea.input,
+button{
+  font-size: 16px;
+}
+
+/* =========================
+   18) RESPONSIVIDADE (ajustes)
    =========================
 */
 @media (max-width: 860px){
   .topbar{
-    align-items:flex-start;
     flex-direction:column;     /* empilha marca e nav */
+    align-items:flex-start;
   }
 
   .nav{
     width:100%;
-    justify-content:flex-start;
-    overflow-x:auto;           /* permite scroll horizontal */
     flex-wrap:nowrap;          /* evita quebrar os links */
+    overflow-x:auto;           /* permite scroll horizontal */
     padding-bottom:4px;
+    justify-content:flex-start;
   }
 
   .nav a, .linklike{
@@ -396,6 +437,14 @@ pre{
     align-items:stretch;
   }
 
+  /* Inputs e botões full-width no mobile */
+  .btn,
+  .input,
+  select.input,
+  textarea.input{
+    width:100%;
+  }
+
   .footer{
     flex-direction:column;
     align-items:flex-start;
@@ -404,9 +453,5 @@ pre{
 
   .footer .muted{
     line-height:1.4;
-  }
-
-  .btn{
-    width:100%;                /* botões full-width no mobile */
   }
 }
