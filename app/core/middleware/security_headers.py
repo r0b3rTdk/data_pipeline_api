@@ -36,8 +36,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         
         if path.startswith("/docs") or path.startswith("/redoc") or path.startswith("/openapi.json"):
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval' data:; "
-                "img-src 'self' data:; "
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://fastapi.tiangolo.com; "
+                "font-src 'self' data: https://cdn.jsdelivr.net; "
                 "connect-src 'self';"
             )
         else:
