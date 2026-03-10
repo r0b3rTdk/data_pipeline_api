@@ -4,7 +4,7 @@ Trusted event repository.
 Handles persistence and querying of validated events.
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select
+from sqlalchemy import select
 from app.infra.db.models.trusted_event import TrustedEvent
 
 # Filtros são compostos dinamicamente sem quebrar a paginação.
