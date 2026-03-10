@@ -8,156 +8,199 @@
 :root{
   --bg: #0b0f14;       /* cor de fundo principal (bem escura) */
   --panel: #121822;    /* cor de painéis/containers (topbar etc.) */
-  --panel2: #0f151f;   /* uma variação pra gradiente/sombra */
+  --panel2: #0f151f;   /* variação para gradiente/sombra */
   --text: #e6edf3;     /* cor padrão do texto */
-  --muted: #9fb0c0;    /* texto “apagado” (subtítulos, infos secundárias) */
+  --muted: #9fb0c0;    /* texto “apagado” (infos secundárias) */
   --border: #223043;   /* cor padrão de bordas */
   --ok: #7dffb2;       /* cor de status OK */
-  --warn: #ffe08a;     /* cor de status ALERTA/AVISO */
+  --warn: #ffe08a;     /* cor de status alerta/aviso */
 }
 
 /* =========================
    2) RESET / NORMALIZAÇÃO
    =========================
-   box-sizing: border-box faz com que padding/border
-   não “aumentem” a largura/altura final dos elementos,
-   deixando layout MUITO mais previsível.
+   box-sizing: border-box torna o layout previsível
+   (padding/border não estouram a largura/altura final).
 */
 *{ box-sizing: border-box; }
 
-/* Estiliza o documento inteiro */
+/* =========================
+   3) BASE (documento)
+   =========================
+*/
 html, body{
   height:100%;                 /* garante altura total da tela */
   margin:0;                    /* remove margem padrão do navegador */
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   background: var(--bg);       /* usa variável global */
   color: var(--text);          /* texto padrão */
 }
 
+/* Layout geral: permite footer “grudar” no fim com flex */
+body{
+  min-height:100vh;            /* cobre a altura total */
+  display:flex;                /* empilha topbar + conteúdo + footer */
+  flex-direction:column;
+}
+
 /* =========================
-   3) TOPBAR (barra de topo fixa)
+   4) TOPBAR (barra de topo fixa)
    =========================
 */
 .topbar{
-  display:flex;                /* layout em linha */
+  display:flex;                /* itens em linha */
   align-items:center;          /* centraliza verticalmente */
-  justify-content:space-between; /* joga um bloco pra esquerda e outro pra direita */
+  justify-content:space-between;
+  gap:16px;                    /* espaço entre blocos */
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
 
-  /* gradiente sutil pra dar profundidade */
+  /* gradiente sutil para profundidade */
   background: linear-gradient(180deg, var(--panel), var(--panel2));
 
-  /* sticky: fica “grudado” no topo quando rola a página */
+  /* sticky: fica “grudado” no topo ao rolar */
   position: sticky;
   top:0;
+  z-index: 20;                 /* garante ficar acima do conteúdo */
 }
 
-/* Bloco de marca (logo + textos) */
-.brand{ display:flex; gap:12px; align-items:center; }
+/* Marca (logo + textos) */
+.brand{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  min-width:0;                 /* evita overflow em textos longos */
+}
 
-/* “Logo” em forma de quadrado com letra (ex: R, A, etc.) */
+/* “Logo” quadrado com letra */
 .logo{
-  width:36px; height:36px;
-  display:inline-flex; align-items:center; justify-content:center;
+  width:40px;
+  height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border:1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   font-weight: 800;
-  letter-spacing: .5px; /* espaçamento entre letras */
+  letter-spacing: .5px;
+  flex-shrink:0;               /* não encolhe */
 }
 
-/* Títulos no topo */
-.titles .title{ font-weight: 700; }
+/* Container de títulos (evita quebrar layout) */
+.titles{ min-width:0; }
+
+.titles .title{
+  font-weight:700;
+  line-height:1.2;
+}
+
 .titles .subtitle{
   color: var(--muted);
   font-size: 12px;
   margin-top:2px;
+  line-height:1.2;
 }
 
 /* =========================
-   4) NAV (links do topo)
+   5) NAV (links do topo)
    =========================
 */
-.nav{ display:flex; gap:14px; align-items:center; }
+.nav{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;              /* quebra em várias linhas se precisar */
+  justify-content:flex-end;
+}
 
-/*
-  .nav a e .linklike compartilham estilo:
-  - .nav a: links normais
-  - .linklike: botão que parece link (ex: <button class="linklike">)
-*/
+/* Links e botões “parecidos com link” */
 .nav a, .linklike{
   color: var(--muted);
   text-decoration:none;
   font-size: 14px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid transparent; /* evita "pular" quando vira hover */
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent; /* evita “pulo” no hover */
   background: transparent;
   cursor:pointer;
+  transition: .2s ease;          /* hover mais suave */
 }
 
-/* Efeito ao passar o mouse */
 .nav a:hover, .linklike:hover{
   color: var(--text);
   border-color: var(--border);
   background: rgba(255,255,255,.03);
 }
 
-/* Link “ativo” (página atual) */
+/* Estado ativo (página atual) */
 .nav a.active{
   color: var(--text);
   border-color: var(--border);
   background: rgba(255,255,255,.05);
 }
 
-/* Classe utilitária: esconder elementos */
+/* Utilitário: esconder */
 .hidden{ display:none !important; }
 
 /* =========================
-   5) CONTAINER (largura máxima do conteúdo)
+   6) CONTAINER (largura e respiro)
    =========================
 */
 .container{
-  max-width: 1100px; /* limita a largura em telas grandes */
-  margin: 0 auto;    /* centraliza horizontalmente */
-  padding: 18px;     /* respiro interno */
+  width:100%;
+  max-width: 1100px;           /* limita em telas grandes */
+  margin: 0 auto;              /* centraliza */
+  padding: 18px;               /* respiro interno */
+  flex:1;                      /* empurra o footer pro final */
 }
 
+/* Wrapper do app (se precisar de ajustes futuros) */
+.app{ width:100%; }
+
 /* =========================
-   6) CARD (caixa/painel)
+   7) CARD (painéis)
    =========================
 */
 .card{
   border:1px solid var(--border);
-  background: rgba(255,255,255,.02); /* bem sutil, quase transparente */
-  border-radius: 16px;
+  background: rgba(255,255,255,.02); /* fundo sutil */
+  border-radius: 18px;
   padding: 16px;
 }
 
 /* =========================
-   7) GRID (layout em grade)
+   8) GRID (layout em grade)
    =========================
 */
 .grid{
   display:grid;
-  grid-template-columns: 1fr; /* padrão: 1 coluna */
+  grid-template-columns: 1fr;  /* padrão: 1 coluna */
   gap: 14px;
 }
 
-/*
-  Responsividade:
-  - em telas >= 820px, se tiver .grid.two, vira 2 colunas iguais
-  Exemplo: <div class="grid two"> ... </div>
-*/
-@media (min-width: 820px){
-  .grid.two{ grid-template-columns: 1fr 1fr; }
+/* >= 720px: 2 colunas */
+@media (min-width: 720px){
+  .grid.two{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* >= 980px: 3 colunas */
+@media (min-width: 980px){
+  .grid.three{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* =========================
-   8) TIPOGRAFIA (textos)
+   9) TIPOGRAFIA (textos)
    =========================
 */
-.h1{ font-size: 18px; margin: 0 0 6px 0; }
+.h1{
+  font-size: 18px;
+  margin: 0 0 6px 0;
+}
+
 .p{
   margin: 0;
   color: var(--muted);
@@ -166,49 +209,68 @@ html, body{
 }
 
 /* =========================
-   9) LAYOUTS RÁPIDOS (flex)
+   10) LAYOUTS RÁPIDOS (flex)
    =========================
 */
-.row{ display:flex; gap: 10px; align-items:center; }
+.row{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  flex-wrap:wrap;              /* evita quebrar feio em telas menores */
+}
 
 /* =========================
-   10) INPUTS (campo de texto)
+   11) INPUTS
    =========================
 */
-.input{
+.input, select.input, textarea.input{
   width: 100%;
+  min-height: 44px;            /* tamanho confortável para toque */
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: rgba(0,0,0,.25);
   color: var(--text);
-  outline: none; /* remove borda azul padrão ao focar (você pode customizar depois) */
+  outline: none;
+}
+
+/* Placeholder mais suave */
+.input::placeholder{
+  color: var(--muted);
 }
 
 /* =========================
-   11) BOTÕES
+   12) BOTÕES
    =========================
 */
 .btn{
-  padding: 10px 12px;
+  min-height: 44px;            /* acessível no mobile */
+  padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: rgba(255,255,255,.06);
   color: var(--text);
   cursor:pointer;
   font-weight: 700;
+  transition: .2s ease;
 }
-.btn:hover{ background: rgba(255,255,255,.1); }
+
+.btn:hover{
+  background: rgba(255,255,255,.1);
+}
 
 /* Botão principal (ação mais importante) */
 .btn.primary{
   background: rgba(138,180,255,.18);
   border-color: rgba(138,180,255,.35);
 }
-.btn.primary:hover{ background: rgba(138,180,255,.25); }
+
+.btn.primary:hover{
+  background: rgba(138,180,255,.25);
+}
 
 /* =========================
-   12) DIVISÓRIA (linha horizontal)
+   13) DIVISÓRIA
    =========================
 */
 .hr{
@@ -219,7 +281,7 @@ html, body{
 }
 
 /* =========================
-   13) BADGES (tags de status)
+   14) BADGES (status/tags)
    =========================
 */
 .badge{
@@ -227,25 +289,28 @@ html, body{
   align-items:center;
   gap:8px;
   padding: 6px 10px;
-  border-radius: 999px; /* deixa totalmente arredondado */
+  border-radius: 999px;        /* totalmente arredondado */
   border:1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
   background: rgba(255,255,255,.02);
+
+  /* evita estourar com textos longos */
+  max-width:100%;
+  word-break:break-all;
 }
 
-/* Variações por status */
 .badge.ok{ color: var(--ok); border-color: rgba(125,255,178,.35); }
 .badge.warn{ color: var(--warn); border-color: rgba(255,224,138,.35); }
 
-/* Texto apagado utilitário */
 .muted{ color: var(--muted); }
 
 /* =========================
-   14) FOOTER (rodapé)
+   15) FOOTER
    =========================
 */
 .footer{
+  width:100%;
   max-width: 1100px;
   margin: 0 auto;
   padding: 10px 18px 18px;
@@ -253,4 +318,95 @@ html, body{
   display:flex;
   align-items:center;
   gap:10px;
+  flex-wrap:wrap;
+}
+
+/* =========================
+   16) TABLES
+   =========================
+*/
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:14px;
+  min-width: 760px;            /* força scroll horizontal em telas pequenas */
+}
+
+table th,
+table td{
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(34,48,67,.6);
+  text-align:left;
+  vertical-align:top;
+}
+
+table th{
+  color:#9fb0c0;
+  font-weight:700;
+}
+
+/* Blocos de código/logs: não corta conteúdo */
+pre{
+  overflow:auto;
+}
+
+/* =========================
+   17) RESPONSIVIDADE (ajustes)
+   =========================
+*/
+@media (max-width: 860px){
+  .topbar{
+    align-items:flex-start;
+    flex-direction:column;     /* empilha marca e nav */
+  }
+
+  .nav{
+    width:100%;
+    justify-content:flex-start;
+    overflow-x:auto;           /* permite scroll horizontal */
+    flex-wrap:nowrap;          /* evita quebrar os links */
+    padding-bottom:4px;
+  }
+
+  .nav a, .linklike{
+    white-space:nowrap;        /* não quebra texto do link */
+  }
+}
+
+@media (max-width: 640px){
+  .container{
+    padding: 14px;             /* menos padding no mobile */
+  }
+
+  .card{
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .titles .title{
+    font-size: 16px;
+  }
+
+  .titles .subtitle{
+    font-size: 11px;
+  }
+
+  .row{
+    flex-direction:column;     /* empilha inputs/botões */
+    align-items:stretch;
+  }
+
+  .footer{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+  }
+
+  .footer .muted{
+    line-height:1.4;
+  }
+
+  .btn{
+    width:100%;                /* botões full-width no mobile */
+  }
 }
