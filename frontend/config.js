@@ -6,5 +6,5 @@
 // Se mudar porta/host, altere aqui.
 
 window.__APP_CONFIG__ = {
-  API_BASE_URL: "http://localhost",
+    API_BASE_URL: "https://data-pipeline-api-p01y.onrender.com",
 };
