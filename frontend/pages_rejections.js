@@ -63,10 +63,10 @@
         ),
 
         // Wrapper para scroll horizontal
-        P01UI.el("div", { style: "overflow:auto;" }, [
+        P01UI.el("div", { class: "table-wrap" }, [
           P01UI.el(
             "table",
-            { style: "width:100%; border-collapse:collapse; font-size:14px;" },
+            { style: "border-collapse:collapse; font-size:14px;" },
             [
               P01UI.el("thead", {}, [
                 P01UI.el("tr", {}, [

@@ -42,7 +42,7 @@ def list_trusted(
         q = q.filter(TrustedEvent.event_timestamp <= date_to)
 
     # Total antes da paginação
-    total = q.with_entities(func.count()).scalar() or 0
+    total = q.order_by(None).count()
 
     # Página atual
     items = (
