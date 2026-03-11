@@ -137,7 +137,10 @@
 
       // Render final da página
       app.innerHTML = "";
-      app.appendChild(P01UI.el("div", { class: "grid" }, [header, table, pager]));
+      app.appendChild(header);
+      app.appendChild(table);
+      app.appendChild(pager);
+      
     } catch (err) {
       // Erro padronizado (usa P01UI.renderError)
       P01UI.renderError(app, "Falha ao carregar trusted", err);
