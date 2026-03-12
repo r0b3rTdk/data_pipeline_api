@@ -1,12 +1,17 @@
 name: CI - Data Pipeline API
 
 on:
-  # Dispara quando fizer push nas branches principais
   push:
     branches: [main, develop]
-  # Dispara quando abrir/atualizar PR para main/develop
+    paths-ignore:
+      - '**/*.md'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - '**/*.md'
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -28,7 +33,6 @@ jobs:
           --health-retries=10
 
     env:
-      # Variáveis de ambiente usadas pelos testes e pela app no CI
       DATABASE_URL: postgresql+psycopg://appuser:apppass@localhost:5432/appdb
       APP_ENV: test
       JWT_SECRET: test_secret_key
@@ -45,7 +49,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip" # Cache de dependências pra acelerar builds
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -55,11 +59,11 @@ jobs:
 
       - name: Run lint (flake8)
         run: |
-          flake8 app 
+          flake8 app
 
       - name: Run database migrations
         run: |
-          alembic upgrade head # Sobe o schema do banco antes de rodar os testes
+          alembic upgrade head
 
       - name: Run tests
         run: |
