@@ -1,5 +1,9 @@
 # Troubleshooting — Fase 7 (Front Dashboard)
 
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 7** e como foram resolvidos.
+
+---
+
 ## 1) Front abre, mas Login dá “Failed to fetch”
 **Causa provável:** API fora do ar, base URL errada ou CORS.
 

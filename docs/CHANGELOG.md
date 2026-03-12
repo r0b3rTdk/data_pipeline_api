@@ -1,6 +1,39 @@
-# Changelog — Projeto01 (Data Pipeline API)
+# Changelog — Projeto (Data Pipeline API)
 
 Este changelog registra as entregas por fase do projeto.
+
+---
+## [Fase 12] — Deploy Final (Render)
+
+### Adicionado
+- Deploy real do backend no **Render Web Service**
+- Deploy real do banco no **Render Postgres**
+- Deploy real do frontend no **Render Static Site**
+- Healthcheck público em:
+  - `GET /api/v1/health`
+- Seed executado no deploy para criação de usuário admin e source padrão
+- Configuração de CORS para o frontend publicado
+- Ajustes finais de responsividade no frontend mobile
+- Documentação da fase:
+  - `docs/12_fase12_deploy_final.md`
+  - `docs/99_troubleshooting_fase12.md`
+
+### Alterado
+- `DATABASE_URL` ajustada para driver `psycopg`
+- `Dockerfile` ajustado para executar:
+  - migrations
+  - seed
+  - inicialização da API
+- `config.js` do frontend apontando para a API pública do Render
+- Correções estruturais de responsividade em Trusted/Rejections
+
+### Validado em produção
+- API pública online com HTTPS
+- Frontend público online
+- Login funcionando
+- Ingest funcionando com API Key
+- Trusted / Rejections / Security / Audit funcionando em produção
+- Integração frontend + backend + banco validada
 
 ---
 ## [Fase 11] — Security Hardening Avançado

@@ -1,5 +1,9 @@
 # Troubleshooting — Fase 5
 
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 5** e como foram resolvidos.
+
+---
+
 ## 1) PowerShell: “curl” não é curl
 No PowerShell, `curl` é alias do `Invoke-WebRequest`.
 

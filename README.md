@@ -1,10 +1,18 @@
 # Projeto — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES)
 
-API e front-end mínimos (e funcionais) para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** — com camadas de **segurança** e **observabilidade** pensadas para uso real.
+API e front-end para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** — com camadas de **segurança** e **observabilidade** pensadas para uso real.
 
 ---
 
 ## Visão geral
+
+## Ambiente publicado
+
+O projeto está publicado em produção no Render:
+
+- **API:** `https://data-pipeline-api-p01y.onrender.com`
+- **Frontend:** `https://data-pipeline-frontend.onrender.com`
+- **Healthcheck:** `https://data-pipeline-api-p01y.onrender.com/api/v1/health`
 
 ### Fluxo (RAW → TRUSTED / REJECTION)
 
@@ -29,16 +37,27 @@ API e front-end mínimos (e funcionais) para **ingestão**, **validação**, **i
   - `X-Process-Time-Ms`
   - endpoint `/metrics` simples
   - health e readiness (inclui check de DB)
-- **Front (Fase 7)** com login e telas de consulta
+- **Front-end** com login e telas de consulta
 
 ### Stack
 
-- **FastAPI** + Uvicorn
+- **FastAPI + Uvicorn**
 - **PostgreSQL**
 - **SQLAlchemy**
 - **Alembic**
-- Docker + Docker Compose
-- Nginx (modo produção-lite)
+- **Docker + Docker Compose**
+- **Render (deploy em produção)**
+- **Nginx**
+
+## Deploy final
+
+Além do ambiente local com Docker, o projeto também foi validado em produção com:
+
+- **Render Web Service** para o backend
+- **Render Postgres** para o banco
+- **Render Static Site** para o frontend
+
+Isso permitiu validar o fluxo real ponta a ponta com frontend, backend, banco, autenticação, ingestão e consultas em ambiente público com HTTPS.
 
 ---
 
@@ -82,27 +101,52 @@ docker compose logs -f api
 ---
 
 ## Front-end
+O projeto possui um frontend administrativo mínimo, desenvolvido em HTML, CSS e JavaScript puro, responsável por autenticação e consulta dos dados processados pela API.
 
-### Opção 1 — Dev simples (recomendado)
+## Ambiente publicado
 
-> Ajuste os comandos abaixo para a pasta do front (se necessário).
+O frontend está publicado no Render como Static Site:
+* **Frontend:** [https://data-pipeline-frontend.onrender.com](https://data-pipeline-frontend.onrender.com)
+* **API consumida:** [https://data-pipeline-api-p01y.onrender.com](https://data-pipeline-api-p01y.onrender.com)
 
-```bash
-cd front
-npm install
-npm run dev
+## Deploy do frontend
+
+O frontend foi publicado com a seguinte configuração no Render:
+* **Root Directory:** `frontend`
+* **Build Command:** *(vazio)*
+* **Publish Directory:** `.`
+
+## Integração com a API
+
+O frontend consome a API pública configurada no arquivo `config.js`.
+
+**Valor utilizado:**
+
+```javascript
+API_BASE_URL = "[https://data-pipeline-api-p01y.onrender.com](https://data-pipeline-api-p01y.onrender.com)"
 ```
 
-### Login (JWT) no front
+As requisições utilizam autenticação JWT:
+```http
+Authorization: Bearer <token>
+```
 
-- Faça login pela UI.
-- O front armazena o token e o envia no `Authorization: Bearer <token>`.
+## Telas disponíveis
+O frontend administrativo possui as seguintes telas:
+* Login
+* Dashboard
+* Trusted
+* Rejections
+* Security Events
+* Audit Logs
 
-### Telas principais
+## Responsividade
+O frontend foi ajustado para funcionar corretamente em dispositivos móveis.
 
-- **Login**
-- **TRUSTED** (consulta/listagem)
-- **REJEIÇÕES** (consulta/listagem)
+**Correções aplicadas:**
+* Correção de zoom automático em inputs
+* Scroll horizontal controlado nas tabelas
+* Correção estrutural de layout nas páginas Trusted e Rejections
 
 ---
 
@@ -110,10 +154,13 @@ npm run dev
 
 ### Variáveis de ambiente
 
+> As variáveis abaixo referem-se principalmente ao backend.
+
+> O frontend publicado utiliza o arquivo `config.js` para apontar para a API pública no Render.
+
 Crie um `.env` baseado no `.env.example`.
 
-Exemplo (referência):
-
+**Exemplo (referência):**
 ```env
 DATABASE_URL=postgresql+psycopg://appuser:apppass@db:5432/appdb
 APP_ENV=local
@@ -314,8 +361,6 @@ Este repositório possui **Integração Contínua** via **GitHub Actions**.
 
 Para visualizar execuções e logs:
 - GitHub → aba **Actions**
-
-> Documentação da fase: `docs/10_fase10_ci_cd.md` e `docs/99_troubleshooting_fase10.md`.
 
 ---
 

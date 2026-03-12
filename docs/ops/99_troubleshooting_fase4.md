@@ -1,7 +1,6 @@
-# docs/99_troubleshooting_fase4.md — Erros reais da Fase 4 (Security + API Key + RBAC básico) + Como corrigir
+# Troubleshooting - Fase 4 (Security + API Key + RBAC básico)
 
 Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 4** e como foram resolvidos.
-A ideia é colar isso no repo (igual você fez na Fase 3) para mostrar maturidade em debug e troubleshooting.
 
 ---
 
@@ -265,12 +264,3 @@ LIMIT 10;"
 ```
 
 ---
-
-## Nota de entrega
-
-Esse arquivo deve ficar no repo em `docs/99_troubleshooting_fase4.md`.
-Ele mostra que você:
-- implementou API key corretamente (hash + verify)
-- registrou eventos de segurança sem quebrar o fluxo (não dá 500)
-- dominou diferenças de PowerShell vs Linux/psql
-- sabe diagnosticar erros de ORM/migrations (FK/tabelas/models)

@@ -89,8 +89,3 @@ git push
 
 ---
 
-## Troubleshooting
-
-Se algo falhar, consulte:
-
-- `docs/99_troubleshooting_fase10.md`

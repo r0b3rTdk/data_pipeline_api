@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Disponibilizar o **Projeto01 - Data Pipeline API** em um ambiente Linux com estrutura de produção-lite, utilizando:
+Disponibilizar o **Projeto - Data Pipeline API** em um ambiente Linux com estrutura de produção-lite, utilizando:
 
 - Docker Compose (produção)
 - PostgreSQL em container com volume persistente

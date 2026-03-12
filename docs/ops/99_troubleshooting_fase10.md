@@ -1,6 +1,6 @@
 # 99 — Troubleshooting (Fase 10: CI/CD)
 
-Este documento registra os principais erros encontrados ao configurar o CI no GitHub Actions e como resolvemos cada um deles.
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 10** e como foram resolvidos.
 
 ---
 

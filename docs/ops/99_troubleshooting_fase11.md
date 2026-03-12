@@ -1,7 +1,6 @@
 # 99 — Troubleshooting (Fase 11 : Security Hardening)
 
-Este arquivo registra os principais erros que apareceram durante a Fase 11
-e como resolvemos cada um, com causa raiz e solução.
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 11** e como foram resolvidos.
 
 ---
 
@@ -137,7 +136,7 @@ docker image prune -f
 docker system prune -a -f
 ```
 
-### Apagar dados do DB (cuidado)
+### Apagar dados do DB
 ```bash
 docker compose down -v
 ```

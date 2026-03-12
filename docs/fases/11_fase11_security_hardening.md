@@ -204,22 +204,3 @@ docker compose exec -e PYTHONPATH=/app api pytest -q
 ```
 
 ---
-
-## Resultado da Fase 11
-Agora sua API tem:
-
-- ✔ Rate limit real (SlowAPI)
-- ✔ Proteção brute force (bloqueio por IP)
-- ✔ Refresh token + endpoint `/auth/refresh`
-- ✔ Security headers reforçados
-- ✔ Logs estruturados de autenticação
-- ✔ Testes cobrindo os fluxos
-
----
-
-## Próxima fase (FINAL)
-**FASE 12 — Deploy + Finalização**
-- Deploy real (Fly.io / Render / Railway / VPS)
-- HTTPS + domínio
-- Variáveis seguras (secrets)
-- README final (arquitetura, diagramas, exemplos de endpoints)

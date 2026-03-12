@@ -1,5 +1,9 @@
 # Troubleshooting — Fase 6
 
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 6** e como foram resolvidos.
+
+---
+
 ## 1) API não responde / connection refused
 **Sintoma**
 - `curl: (7) Failed to connect...`

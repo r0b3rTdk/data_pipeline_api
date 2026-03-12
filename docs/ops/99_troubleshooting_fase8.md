@@ -1,8 +1,6 @@
 # Troubleshooting — Fase 8 (Deploy / Produção-Lite)
 
-## Objetivo deste documento
-
-Registrar problemas comuns encontrados durante o deploy da Fase 8 (Docker + Nginx + produção-lite) e as respectivas causas/soluções, com foco em execução em servidor Linux (Ubuntu/WSL).
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 8** e como foram resolvidos.
 
 ---
 

@@ -1,7 +1,6 @@
 # Troubleshooting — Fase 9 (Observabilidade)
 
-Este guia cobre os problemas mais comuns ao validar a Fase 9 localmente (Docker)
-e em ambiente de deploy.
+Este arquivo registra **enroscos reais** que aconteceram durante a **Fase 9** e como foram resolvidos.
 
 ---
 

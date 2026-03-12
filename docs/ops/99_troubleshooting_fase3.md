@@ -1,7 +1,6 @@
-# docs/99_troubleshooting_fase3.md — Erros reais da Fase 3 + Como corrigir
+# Troubleshooting - Fase 3
 
 Este arquivo registra **enroscos reais** que aconteceram durante a Fase 3 e como foram resolvidos.
-A ideia é você colar isso no repo para mostrar maturidade (debug, troubleshooting e domínio de ambiente).
 
 ---
 
@@ -285,11 +284,3 @@ A ideia é você colar isso no repo para mostrar maturidade (debug, troubleshoot
   ```
 
 ---
-
-## Nota de entrega
-
-Esse arquivo deve ficar no repo em `docs/99_troubleshooting_fase3.md`.
-Ele mostra que você:
-- sabe montar ambiente
-- sabe debugar Docker/Alembic/SQL/Python
-- sabe registrar incidentes e correções (maturidade de engenharia)
