@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.infra.db.session import get_db
 from app.infra.db.repositories.user_repo import get_user_by_username
+from app.infra.db.repositories.security_event_repo import create_security_event
 from app.core.settings import settings
 from app.core.security import (
     verify_password,
@@ -68,16 +69,32 @@ def login(
 ):
     ip = _client_ip(request)
     ua = _user_agent(request)
-    
+    rid = getattr(request.state, "request_id", None)
+
     # Brute force block
     if is_blocked(ip):
         logger.info(
-            "login_blocked", 
+            "login_blocked",
             extra={
-                "client_ip": ip, 
-                "user_agent": ua, 
-                "path": str(request.url.path), 
-                "method": request.method}
+                "client_ip": ip,
+                "user_agent": ua,
+                "path": str(request.url.path),
+                "method": request.method,
+            },
+        )
+        create_security_event(
+            db=db,
+            event_type="login_blocked",
+            severity="HIGH",
+            user_id=None,
+            ip=ip,
+            user_agent=ua,
+            request_id=rid,
+            details={
+                "path": str(request.url.path),
+                "method": request.method,
+                "username": payload.username,
+            },
         )
         raise HTTPException(status_code=429, detail="too_many_login_attempts")
 
@@ -85,33 +102,79 @@ def login(
     if not user or not user.is_active:
         register_failure(ip)
         logger.info(
-            "login_failed", 
+            "login_failed",
             extra={
-                "client_ip": ip, 
-                "user_agent": ua, 
-                "path": str(request.url.path), 
-                "method": request.method}
+                "client_ip": ip,
+                "user_agent": ua,
+                "path": str(request.url.path),
+                "method": request.method,
+            },
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
+        create_security_event(
+            db=db,
+            event_type="login_failed",
+            severity="HIGH",
+            user_id=None,
+            ip=ip,
+            user_agent=ua,
+            request_id=rid,
+            details={
+                "path": str(request.url.path),
+                "method": request.method,
+                "username": payload.username,
+                "reason": "invalid_user_or_inactive",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_credentials",
+        )
 
     if not verify_password(payload.password, user.password_hash):
         register_failure(ip)
         logger.info(
-            "login_failed", 
+            "login_failed",
             extra={
-                "client_ip": ip, 
-                "user_agent": ua, 
-                "user_id": int(user.id), 
-                "path": str(request.url.path), 
-                "method": request.method}
+                "client_ip": ip,
+                "user_agent": ua,
+                "user_id": int(user.id),
+                "path": str(request.url.path),
+                "method": request.method,
+            },
         )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_credentials")
+        create_security_event(
+            db=db,
+            event_type="login_failed",
+            severity="HIGH",
+            user_id=int(user.id),
+            ip=ip,
+            user_agent=ua,
+            request_id=rid,
+            details={
+                "path": str(request.url.path),
+                "method": request.method,
+                "username": payload.username,
+                "reason": "invalid_password",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_credentials",
+        )
 
     # sucesso → reseta brute force
     reset(ip)
 
-    access = create_access_token(sub=user.username, role=user.role, user_id=int(user.id))
-    refresh = create_refresh_token(sub=user.username, role=user.role, user_id=int(user.id))
+    access = create_access_token(
+        sub=user.username,
+        role=user.role,
+        user_id=int(user.id),
+    )
+    refresh = create_refresh_token(
+        sub=user.username,
+        role=user.role,
+        user_id=int(user.id),
+    )
 
     logger.info(
         "login_success",
@@ -124,16 +187,33 @@ def login(
             "method": request.method,
         },
     )
-    return LoginResponse(access_token=access, refresh_token=refresh)
+    create_security_event(
+        db=db,
+        event_type="login_success",
+        severity="LOW",
+        user_id=int(user.id),
+        ip=ip,
+        user_agent=ua,
+        request_id=rid,
+        details={
+            "path": str(request.url.path),
+            "method": request.method,
+            "username": payload.username,
+            "role": user.role,
+        },
+    )
 
+    return LoginResponse(access_token=access, refresh_token=refresh)
 
 @router.post("/auth/refresh", response_model=RefreshResponse)
 def refresh_token(
     request: Request,
     payload: RefreshRequest,
+    db: Session = Depends(get_db),
 ):
     ip = _client_ip(request)
     ua = _user_agent(request)
+    rid = getattr(request.state, "request_id", None)
 
     try:
         data = decode_token(payload.refresh_token)
@@ -146,6 +226,19 @@ def refresh_token(
                 "path": str(request.url.path), 
                 "method": request.method}
         )
+        create_security_event(
+            db=db,
+            event_type="token_refresh_failed",
+            severity="MEDIUM",
+            user_id=None,
+            ip=ip,
+            user_agent=ua,
+            request_id=rid,
+            details={
+                "path": str(request.url.path),
+                "method": request.method,
+            },
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token")
 
     if data.get("typ") != "refresh":
@@ -156,6 +249,19 @@ def refresh_token(
                 "user_agent": ua, 
                 "path": str(request.url.path), 
                 "method": request.method}
+        )
+        create_security_event(
+            db=db,
+            event_type="token_refresh_failed",
+            severity="MEDIUM",
+            user_id=None,
+            ip=ip,
+            user_agent=ua,
+            request_id=rid,
+            details={
+                "path": str(request.url.path),
+                "method": request.method,
+            },
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_token_type")
 
@@ -175,6 +281,20 @@ def refresh_token(
             "role": str(data["role"]),
             "path": str(request.url.path),
             "method": request.method,
+        },
+    )
+    create_security_event(
+        db=db,
+        event_type="token_refresh",
+        severity="LOW",
+        user_id=int(data["uid"]),
+        ip=ip,
+        user_agent=ua,
+        request_id=rid,
+        details={
+            "path": str(request.url.path),
+            "method": request.method,
+            "role": str(data["role"]),
         },
     )
     return RefreshResponse(access_token=new_access)
