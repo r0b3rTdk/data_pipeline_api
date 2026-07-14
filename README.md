@@ -1,370 +1,326 @@
-# Projeto — Data Pipeline API (RAW → TRUSTED → REJEIÇÕES)
+# Data Pipeline API — RAW → TRUSTED → REJECTIONS
 
-API e front-end para **ingestão**, **validação**, **idempotência/deduplicação**, **persistência relacional**, **registro de rejeições** e **consulta** — com camadas de **segurança** e **observabilidade** pensadas para uso real.
+API para ingestão de eventos de múltiplas fontes, com validação, deduplicação, persistência relacional, rastreio de rejeições, autenticação em duas camadas (fontes via API Key, usuários via JWT), RBAC, auditoria e observabilidade básica.
 
----
+**Status:** MVP em produção, com pipeline de ingestão, autenticação/RBAC, auditoria e suíte de testes automatizados funcionando. Alguns pontos de configuração de segurança e deduplicação têm lacunas reais — detalhados em "Trade-offs" e "Limitações".
 
-## Visão geral
-
-## Ambiente publicado
-
-O projeto está publicado em produção no Render:
-
-- **API:** `https://data-pipeline-api-p01y.onrender.com`
-- **Frontend:** `https://data-pipeline-frontend.onrender.com`
-- **Healthcheck:** `https://data-pipeline-api-p01y.onrender.com/api/v1/health`
-
-### Fluxo (RAW → TRUSTED / REJECTION)
-
-1. **Ingestão** recebe eventos via endpoint protegido por **API Key por fonte**.
-2. Cada item é validado e normalizado.
-3. Itens válidos seguem para **TRUSTED** (banco relacional).
-4. Itens inválidos ou inconsistentes geram um registro em **REJEIÇÕES** com motivo e payload original.
-5. Endpoints de consulta permitem inspecionar TRUSTED/REJEIÇÕES.
-
-### O que este projeto entrega
-
-- **Ingestão** com validação e **idempotência/deduplicação**
-- **Persistência** (PostgreSQL) + **migrations** (Alembic)
-- **Rejeições** com rastreabilidade (motivo + payload)
-- **Segurança**
-  - API Key por fonte (hash no banco)
-  - Login **JWT**
-  - **RBAC** (perfis/permissões por rota)
-  - **Auditoria** + **security events**
-- **Observabilidade**
-  - `X-Request-Id` (propagado)
-  - `X-Process-Time-Ms`
-  - endpoint `/metrics` simples
-  - health e readiness (inclui check de DB)
-- **Front-end** com login e telas de consulta
-
-### Stack
-
-- **FastAPI + Uvicorn**
-- **PostgreSQL**
-- **SQLAlchemy**
-- **Alembic**
-- **Docker + Docker Compose**
-- **Render (deploy em produção)**
-- **Nginx**
-
-## Deploy final
-
-Além do ambiente local com Docker, o projeto também foi validado em produção com:
-
-- **Render Web Service** para o backend
-- **Render Postgres** para o banco
-- **Render Static Site** para o frontend
-
-Isso permitiu validar o fluxo real ponta a ponta com frontend, backend, banco, autenticação, ingestão e consultas em ambiente público com HTTPS.
+**Ambiente publicado (Render):**
+- API: `https://data-pipeline-api-p01y.onrender.com`
+- Frontend: `https://data-pipeline-frontend.onrender.com`
+- Healthcheck: `https://data-pipeline-api-p01y.onrender.com/api/v1/health`
 
 ---
 
-## Como rodar (Docker)
+## Problema Resolvido
 
-> **URLs locais (Docker):** por padrão, a API sobe em `http://localhost:8000`.
-> Se você estiver usando um container **nginx** na frente (opcional), o acesso pode ser via `http://localhost` (porta 80).
+Quando várias fontes (parceiros, sistemas internos, sensores) mandam eventos pra um mesmo lugar, o problema raramente é só "salvar o dado". É saber o que fazer quando o evento vem malformado, quando ele repete, e quem mexeu no quê depois.
 
-
-
-> Pré-requisitos: Docker e Docker Compose.
-
-### 1) Subir os serviços
-
-```bash
-docker compose up -d --build
-```
-
-### 2) Health
-
-```bash
-curl -i http://localhost:8000/api/v1/health
-```
-
-### 3) Readiness (com checks)
-
-```bash
-curl -i http://localhost:8000/api/v1/ready
-```
-
-### 4) OpenAPI (Swagger)
-
-- `http://localhost:8000/docs`
-
-### 5) Logs (opcional)
-
-```bash
-docker compose logs -f api
-```
+Este projeto resolve isso com um pipeline de três estágios: todo evento entra como **RAW** (sempre gravado, mesmo que depois seja recusado), é validado e vira **TRUSTED** (dado confiável, consultável) ou **REJECTION** (com motivo e o payload original preservado). Por cima disso, autenticação por fonte, login com perfis de acesso e auditoria de qualquer alteração manual nos dados.
 
 ---
 
-## Front-end
-O projeto possui um frontend administrativo mínimo, desenvolvido em HTML, CSS e JavaScript puro, responsável por autenticação e consulta dos dados processados pela API.
+## Como Funciona
 
-## Ambiente publicado
-
-O frontend está publicado no Render como Static Site:
-* **Frontend:** [https://data-pipeline-frontend.onrender.com](https://data-pipeline-frontend.onrender.com)
-* **API consumida:** [https://data-pipeline-api-p01y.onrender.com](https://data-pipeline-api-p01y.onrender.com)
-
-## Deploy do frontend
-
-O frontend foi publicado com a seguinte configuração no Render:
-* **Root Directory:** `frontend`
-* **Build Command:** *(vazio)*
-* **Publish Directory:** `.`
-
-## Integração com a API
-
-O frontend consome a API pública configurada no arquivo `config.js`.
-
-**Valor utilizado:**
-
-```javascript
-API_BASE_URL = "[https://data-pipeline-api-p01y.onrender.com](https://data-pipeline-api-p01y.onrender.com)"
+```mermaid
+flowchart TD
+    A[Fonte externa: POST /ingest + X-API-Key] --> B{API Key valida?}
+    B -- Nao --> C[401 + security_event AUTH_FAILED]
+    B -- Sim --> D[Grava RAW - status inicial REJECTED]
+    D --> E{Ja existe RAW com mesmo source + external_id?}
+    E -- Sim --> F[Grava novo RAW como DUPLICATE, encerra]
+    E -- Nao --> G{event_type e event_status permitidos?}
+    G -- Nao --> H[Grava Rejection com motivo, RAW = REJECTED]
+    G -- Sim --> I[Grava TrustedEvent, RAW = ACCEPTED]
 ```
 
-As requisições utilizam autenticação JWT:
-```http
-Authorization: Bearer <token>
-```
-
-## Telas disponíveis
-O frontend administrativo possui as seguintes telas:
-* Login
-* Dashboard
-* Trusted
-* Rejections
-* Security Events
-* Audit Logs
-
-## Responsividade
-O frontend foi ajustado para funcionar corretamente em dispositivos móveis.
-
-**Correções aplicadas:**
-* Correção de zoom automático em inputs
-* Scroll horizontal controlado nas tabelas
-* Correção estrutural de layout nas páginas Trusted e Rejections
+Do outro lado, operadores/analistas/auditores consultam TRUSTED, REJECTIONS, auditoria e eventos de segurança via um front-end administrativo, autenticados por JWT e restritos por papel.
 
 ---
 
-## Configuração
+## Arquitetura
 
-### Variáveis de ambiente
-
-> As variáveis abaixo referem-se principalmente ao backend.
-
-> O frontend publicado utiliza o arquivo `config.js` para apontar para a API pública no Render.
-
-Crie um `.env` baseado no `.env.example`.
-
-**Exemplo (referência):**
-```env
-DATABASE_URL=postgresql+psycopg://appuser:apppass@db:5432/appdb
-APP_ENV=local
-
-JWT_SECRET=change-me
-JWT_ALG=HS256
-JWT_EXPIRES_MIN=60
-```
-
-> No Docker, o host do Postgres é `db` (nome do serviço).
-
----
-
-## Banco e migrations (Alembic)
-
-Aplicar migrations (dentro do container da API):
-
-```bash
-docker compose exec api sh -c "alembic upgrade head"
-```
-
-Criar revision:
-
-```bash
-docker compose exec api alembic revision -m "mensagem"
-```
+- **`app/main.py`** — bootstrap da aplicação: registra middlewares (rate limit, security headers, request id, CORS), os handlers de erro e o router principal.
+- **`app/api/router.py` + `app/api/routes/`** — uma rota por módulo (`auth`, `ingest`, `trusted`, `rejections`, `audit`, `security_events`, `metrics`, `health`, `ready`). Cada rota só orquestra: valida entrada, chama a camada de baixo, formata a saída.
+- **`app/api/deps.py`** — as duas formas de autenticação (API Key por fonte, JWT por usuário) e o RBAC (`require_roles`), usados como dependências do FastAPI.
+- **`app/domain/validation.py`** — a única regra de negócio hoje: `event_type` e `event_status` precisam estar em listas fechadas de valores permitidos.
+- **`app/services/ingest_service.py`** — orquestra o pipeline inteiro: grava RAW, checa duplicidade, valida, decide entre TRUSTED e REJECTION.
+- **`app/infra/db/`** — `models` (SQLAlchemy), `repositories` (uma função por operação de acesso a dado, sem lógica de negócio) e `migrations` (Alembic).
+- **`app/core/`** — configuração (`settings.py`), segurança (`security.py`), logging estruturado, rate limit, bloqueio de brute-force, métricas HTTP em memória e os middlewares de request-id/security-headers.
+- **`app/scripts/seed.py`** — cria o usuário admin e a fonte iniciais, de forma idempotente.
+- **`frontend/`** — painel administrativo estático (HTML/CSS/JS puro), com login e telas de consulta.
 
 ---
 
 ## Segurança
 
-### 2.1) Hardening (Fase 11)
+O projeto tem duas identidades diferentes convivendo na mesma API:
 
-Nesta fase a API ganhou proteções adicionais típicas de produção:
+- **Fontes de dados** autenticam no `/ingest` com uma API Key (header `X-API-Key`), comparada via hash SHA-256 (`hmac.compare_digest`, pra evitar timing attack) contra o hash salvo no banco — a chave em texto puro nunca é persistida.
+- **Usuários humanos** autenticam via `POST /auth/login` (usuário/senha) e recebem um `access_token` curto e um `refresh_token` longo; `POST /auth/refresh` troca o refresh por um novo access token.
+- **RBAC** com quatro papéis (`admin`, `analyst`, `operator`, `auditor`), aplicado por rota:
 
-#### Rate limiting (SlowAPI)
-O endpoint de login possui limite de requisições por IP (configurável).
+| Rota | Papéis permitidos |
+|---|---|
+| `GET /trusted` | operator, analyst, admin |
+| `PATCH /trusted/{id}` | admin |
+| `GET /rejections` | analyst, admin |
+| `GET /audit` | auditor, admin |
+| `GET /security-events` | auditor, admin |
+| `GET /metrics` | operator, analyst, admin |
 
-- **Login:** `POST /api/v1/auth/login`
-- Variável: `LOGIN_RATE_LIMIT` (ex.: `5/minute`)
-
-> Em testes/CI pode ser útil usar um valor maior (ex.: `1000/minute`) para não conflitar com cenários de brute force.
-
-#### Proteção contra brute force (login)
-Além do rate limit, existe bloqueio por IP após falhas consecutivas de senha.
-
-- Após **5 tentativas** falhas (padrão), o IP é bloqueado temporariamente
-- Retorno: **429** com `too_many_login_attempts`
-
-#### Refresh Token (JWT)
-O login retorna **dois tokens**:
-
-- `access_token` (curto)
-- `refresh_token` (longo)
-
-**Login:** `POST /api/v1/auth/login`
-Retorna:
-```json
-{
-  "access_token": "...",
-  "refresh_token": "...",
-  "token_type": "bearer"
-}
-```
-
-**Refresh:** `POST /api/v1/auth/refresh`
-Envia:
-```json
-{
-  "refresh_token": "..."
-}
-```
-Retorna:
-```json
-{
-  "access_token": "...",
-  "token_type": "bearer"
-}
-```
-
-#### Security Headers avançados
-A API adiciona headers de segurança (além dos básicos), incluindo:
-- `Strict-Transport-Security` (somente em HTTPS)
-- `Content-Security-Policy` (CSP)
-- `X-XSS-Protection`
-
-> A política de CSP é mais permissiva nas rotas do Swagger (`/docs`, `/redoc`, `/openapi.json`) para não quebrar a UI.
-
-#### Logs de autenticação (eventos)
-Eventos de autenticação são logados de forma estruturada:
-- `login_success`
-- `login_failed`
-- `login_blocked`
-- `token_refresh`
-
-Campos comuns: `client_ip`, `user_agent`, `user_id`, `role`, `path`, `method`.
-
-
-### 1) API Key por fonte
-
-**Conceito:** cada *source* possui uma API Key. A API recebe a chave e compara com o **hash** persistido no banco.
-
-#### Gerar API Key + Hash (dentro do container)
-
-```bash
-docker compose exec api python -m app.scripts.generate_api_key
-```
-
-> Guarde a API Key com segurança. O banco deve armazenar apenas o **hash**.
-
-#### Salvar o hash no banco (para uma source existente)
-
-Use o script/rota prevista no projeto (ou rode a atualização no DB conforme o guia do projeto).  
-A ideia é: **DB guarda hash** → cliente envia **API Key** → API valida.
-
-### 2) Login — JWT
-
-#### Login
-
-- Endpoint de login retorna um JWT.
-- Demais rotas protegidas exigem `Authorization: Bearer <token>`.
-
-### 3) RBAC
-
-- Perfis e permissões restringem o acesso por rota (ex.: operador, admin etc.).
-- Retornos **403** quando o papel não tem permissão.
-
-### 4) Auditoria e security events
-
-- Ações sensíveis (ex.: patch em TRUSTED, rejeições e operações administrativas) geram auditoria.
-- Eventos de segurança (ex.: tentativas inválidas, violações) são registrados para investigação.
-
----
-
-## Endpoints (referência)
-
-> A lista completa está no Swagger: `http://localhost:8000/docs`.
-
-- **Health:** `GET /api/v1/health`
-- **Readiness:** `GET /api/v1/ready`
-- **Métricas:** `GET /api/v1/metrics`
-- **Ingestão (API Key):** `POST /api/v1/ingest`
-- **Login (JWT):** `POST /api/v1/auth/login`
-- **Consultas:** rotas de TRUSTED e REJEIÇÕES (ver Swagger)
+- **Rate limiting** (SlowAPI) no login, configurável via `LOGIN_RATE_LIMIT`, e **bloqueio por tentativas** (5 falhas seguidas → bloqueio de 10 minutos por IP).
+- **Auditoria**: qualquer `PATCH` em `/trusted` exige um campo `reason` e grava um snapshot de antes/depois.
+- **Security events**: tentativas de autenticação inválidas e acessos negados geram um registro próprio, separado da auditoria de dados — pensado pra investigação, não pra rastreio de mudança.
 
 ---
 
 ## Observabilidade
 
-- `X-Request-Id`
-  - Se o cliente enviar `X-Request-Id`, a API propaga.
-  - Se não enviar, a API gera um novo.
-- `X-Process-Time-Ms` em respostas (latência do processamento)
-- `/metrics` com contadores básicos
-- `/ready` valida “API ok” + “DB ok”
+- **`X-Request-Id`** — aceita o valor enviado pelo cliente ou gera um novo; fica disponível em todo o ciclo da requisição e volta no header da resposta, junto com `X-Process-Time-Ms`.
+- **Logging estruturado** (`app/core/logging.py`) com `request_id`, `client_ip`, `user_id` e `role` em cada linha, pra correlacionar log com requisição.
+- **`GET /metrics`** — combina agregados do banco (contagem por status, top fontes) com um snapshot de contadores HTTP em memória (total de requests, 4xx, 5xx, uptime, latência média por rota).
+- **`GET /health`** e **`GET /ready`** — o segundo faz um `SELECT 1` real no banco e devolve 503 se o Postgres estiver fora do ar, pensado pra orquestrador/load balancer.
 
 ---
 
-## Deploy (produção-lite)
+## Decisões de Arquitetura
 
-Este projeto inclui um cenário de deploy com **Docker Compose** e **Nginx** como reverse proxy:
+**RAW sempre gravado primeiro, com status pessimista.** Todo evento que chega vira uma linha em `raw_ingestion` antes de qualquer validação, já marcado como `REJECTED` por padrão. Garante que nenhum dado bruto se perde, mesmo que a validação falhe logo depois.
 
-- Nginx → API (Uvicorn/FastAPI)
-- PostgreSQL com volume
-- Healthchecks para estabilização do stack
+**Deduplicação simples por `(source, external_id)`.** Decisão consciente de simplicidade pra esta fase — o efeito colateral está detalhado nos trade-offs.
 
-### HTTPS (futuro)
+**Hash de API Key com SHA-256 + `hmac.compare_digest`**, e não bcrypt/argon2: como a chave é gerada com alta entropia (`secrets.token_urlsafe(32)`), um hash rápido e comparado em tempo constante já é suficiente; reservei bcrypt/passlib pra senha de usuário, que tem entropia bem menor.
 
-O bloco HTTPS do Nginx pode ser habilitado quando houver domínio público:
+**Dois tokens (access curto + refresh longo).** Evita forçar login a cada hora sem manter a sessão indefinidamente válida.
 
-1. Apontar DNS (registro A) para o IP do servidor
-2. Ajustar `server_name` no Nginx
-3. Gerar certificado (ex.: Certbot)
-4. Ativar `listen 443 ssl`
-5. Validar `https://SEU_DOMINIO/api/v1/health`
+**Chave de rate-limit/brute-force configurável via header `X-Client-IP`.** Pensado originalmente pra facilitar testes automatizados e simular estar atrás de um proxy sem precisar simular conexões TCP reais. O custo dessa flexibilidade está nos trade-offs.
+
+**Bootstrap via script (`seed.py`), não via endpoint.** Como não existe tela de "criar admin", o primeiro usuário e a primeira fonte nascem de um script idempotente, disparado automaticamente no `CMD` do Dockerfile a cada subida do container.
+
+**Nginx com bloco HTTPS comentado.** Preferi deixar pronto pra ativar quando houver domínio e certificado, em vez de forçar HTTPS num ambiente que ainda não tem os dois.
 
 ---
 
-## Testes
+## Trade-offs
+
+**`payload_hash` é calculado, mas não decide a deduplicação.** O hash do payload é salvo em todo `RawIngestion`, mas a checagem de duplicidade hoje olha só pra `(source_id, external_id)`. Se a mesma fonte reenviar o mesmo `external_id` com dados diferentes — por exemplo, uma atualização legítima do mesmo evento — o sistema trata como `DUPLICATE` e descarta, sem gerar um novo `TRUSTED`. O hash existe, mas não cumpre ainda o papel que o nome sugere.
+
+**Estado operacional em memória do processo.** Os contadores usados em `/metrics` (`app/core/http_metrics.py`) e o bloqueio de brute-force (`app/core/login_attempts.py`) vivem em dicionários dentro do processo Python, protegidos por lock. Funciona bem com uma única réplica; com múltiplos workers ou instâncias, cada processo tem sua própria contagem — um atacante distribuído entre processos nunca acumula tentativas no mesmo contador, e `/metrics` só reflete o processo que atendeu aquela chamada específica.
+
+**Identificação de IP inconsistente entre módulos, e desalinhada com o Nginx do próprio repositório.** A ingestão usa `request.client.host` puro. Login e rate-limit aceitam um header `X-Client-IP` enviado pelo cliente, documentado como recurso pra testes/proxy. O `nginx/default.conf` deste projeto, porém, define `X-Real-IP` e `X-Forwarded-For` — nunca `X-Client-IP`. Ou seja, atrás do Nginx documentado aqui, esse header nunca é preenchido pelo proxy e fica sob controle total de quem faz a chamada.
+
+**`SEED_ON_STARTUP` não é lido em nenhum lugar.** A variável existe em `settings.py`, mas quem decide se o seed roda é o `CMD` do Dockerfile, que chama `python -m app.scripts.seed` incondicionalmente a cada subida. Na prática, isso significa que a senha do admin seed e a API Key da fonte seed voltam pro valor do `.env` a cada restart do container, mesmo que alguém tenha alterado esses valores direto no banco depois.
+
+---
+
+## Estrutura do Projeto
+
+```text
+data_pipeline_api/
+├── Dockerfile
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── alembic.ini
+├── requirements.txt
+├── .env.example / .env.prod.example
+├── app/
+│   ├── main.py
+│   ├── api/
+│   │   ├── router.py
+│   │   ├── deps.py                 # API Key, JWT, RBAC
+│   │   ├── routes/                  # auth, ingest, trusted, rejections, audit, security_events, metrics, health, ready
+│   │   └── schemas/                 # DTOs Pydantic por módulo
+│   ├── domain/
+│   │   └── validation.py            # regra de negócio: event_type/event_status
+│   ├── services/
+│   │   └── ingest_service.py        # orquestra RAW → dedup → validação → TRUSTED/REJECTION
+│   ├── core/
+│   │   ├── settings.py, security.py, logging.py
+│   │   ├── rate_limit.py, login_attempts.py, http_metrics.py
+│   │   └── middleware/              # request_id, security_headers
+│   ├── infra/db/
+│   │   ├── models/                   # SQLAlchemy
+│   │   ├── repositories/             # acesso a dado por entidade
+│   │   └── migrations/               # Alembic (4 revisions)
+│   └── scripts/
+│       └── seed.py                   # cria admin + source iniciais
+├── tests/                             # 9 arquivos, 16 casos, contra Postgres real
+├── frontend/                          # painel admin estático (HTML/CSS/JS)
+├── deploy/
+│   ├── nginx/default.conf
+│   ├── certbot/
+│   └── scripts/                       # deploy.sh, rollback.sh
+└── docs/
+    ├── fases/, overview/, ops/         # documentação do desafio por fase
+    └── diagramas/
+```
+
+---
+
+## Tecnologias
+
+| Tecnologia | Papel no projeto |
+|---|---|
+| FastAPI + Uvicorn | Expõe a API e roda o servidor ASGI |
+| SQLAlchemy + psycopg | ORM e driver de acesso ao PostgreSQL |
+| Alembic | Versionamento do schema (4 migrations) |
+| python-jose | Emissão e validação dos JWTs |
+| passlib (pbkdf2_sha256) | Hash de senha dos usuários |
+| slowapi | Rate limiting do endpoint de login |
+| pytest + httpx | Suíte de testes contra a API real |
+| Docker + Docker Compose | Empacotamento e orquestração local/produção |
+| Nginx | Reverse proxy em produção, com TLS via Certbot |
+| PostgreSQL | Banco relacional (RAW, TRUSTED, REJECTIONS, auditoria) |
+| Render | Hospedagem da API, do banco e do frontend |
+
+`pydantic-settings` está listado no `requirements.txt`, mas `app/core/settings.py` usa `os.getenv` puro por decisão explícita registrada no próprio arquivo ("Low-risk approach: plain os.getenv, no Pydantic yet") — a dependência está instalada, mas não é usada hoje.
+
+---
+
+## Como Executar
+
+### Pré-requisitos
+
+Docker e Docker Compose.
+
+### Subir os serviços
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+O `CMD` do Dockerfile já aplica as migrations e roda o seed (`alembic upgrade head && python -m app.scripts.seed`) automaticamente antes de subir o Uvicorn — não é preciso rodar nada manualmente na primeira vez. O seed cria um admin (`admin` / `admin123` por padrão) e uma fonte (`partner_a`, com a chave definida em `SEED_SOURCE_API_KEY`).
+
+### Conferir se subiu
+
+```bash
+curl -i http://localhost:8000/api/v1/health
+curl -i http://localhost:8000/api/v1/ready
+```
+
+Swagger em `http://localhost:8000/docs`.
+
+### Login e ingestão de teste
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+```bash
+curl -X POST http://localhost:8000/api/v1/ingest \
+  -H "X-API-Key: partner_a_key_change_me" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "partner_a",
+    "external_id": "evt-001",
+    "entity_id": "ent-1",
+    "event_type": "ORDER",
+    "event_status": "NEW",
+    "event_timestamp": "2026-07-14T12:00:00Z",
+    "attributes": {}
+  }'
+```
+
+### Migrations (manual, se precisar)
+
+```bash
+docker compose exec api sh -c "alembic upgrade head"
+docker compose exec api alembic revision -m "mensagem"
+```
+
+### Frontend
+
+O front-end é HTML/CSS/JS puro, sem build. `frontend/config.js` tem `API_BASE_URL` fixo apontando para o backend em produção no Render — pra testar contra a API local, troque esse valor para `http://localhost:8000` antes de servir os arquivos estáticos.
+
+---
+
+## Como Testar
 
 ```bash
 docker compose exec -e PYTHONPATH=/app api pytest -q
 ```
 
+A suíte roda contra um Postgres real (não contra mocks), usando `SAVEPOINT`/rollback por teste (`tests/conftest.py`) pra isolar cada caso sem sujar o banco. Cobre:
+
+- **Autenticação** (`test_auth.py`) — login, refresh, brute-force.
+- **RBAC** (`test_rbac.py`) — acesso negado por papel.
+- **Ingestão** (`test_ingest.py`) — pipeline RAW/TRUSTED/REJECTION.
+- **Auditoria** (`test_audit.py`) e **readiness** (`test_ready.py`).
+- **Hardening** (`test_phase6_*.py`) — formato padronizado de erro HTTP, headers de `request_id` e validação 422.
+
 ---
 
-## CI/CD (GitHub Actions)
+## Limitações Conhecidas
 
-Este repositório possui **Integração Contínua** via **GitHub Actions**.
+- `payload_hash` é calculado mas não usado na deduplicação — reenvio do mesmo `external_id` com payload diferente é tratado como `DUPLICATE` e descartado, não como atualização.
+- `SEED_ON_STARTUP` nunca é lido; o seed roda incondicionalmente a cada subida do container, via `CMD` do Dockerfile.
+- `LOGIN_MAX_ATTEMPTS` e `LOGIN_BLOCK_MINUTES` existem em `settings.py`, mas nunca são lidos — os valores reais (5 tentativas, 10 minutos) estão fixos em `login_attempts.py`.
+- `X-Client-IP` é aceito de headers enviados pelo próprio cliente para a chave de rate-limit/brute-force, mas o Nginx do projeto não seta esse header — atrás do proxy documentado aqui, ele fica sob controle de quem faz a chamada.
+- Contadores de `/metrics` e bloqueio de brute-force vivem em memória do processo; não sobrevivem a um restart nem são compartilhados entre réplicas.
+- `GET /metrics` chama `get_metrics()` duas vezes seguidas com os mesmos parâmetros — uma consulta redundante ao banco.
+- `frontend/config.js` tem a URL da API fixa no código, apontando para produção por padrão.
+- Bloco HTTPS do Nginx está comentado, sem certificado ativo por padrão.
 
-- Workflow: `.github/workflows/ci.yml`
-- Dispara em: `push` e `pull_request` para `main` e `develop`
-- Etapas:
-  - lint (`flake8 app`)
-  - migrations (`alembic upgrade head`)
-  - testes (`pytest -q`)
-  - PostgreSQL sobe via service container no runner
+---
 
-Para visualizar execuções e logs:
-- GitHub → aba **Actions**
+## O que este projeto ainda NÃO faz
+
+- Não trata um reenvio do mesmo evento como atualização — só como duplicata descartada.
+- Não tem revogação/blacklist de refresh token: um token emitido continua válido até expirar, mesmo sem endpoint de logout.
+- Não persiste métricas HTTP nem estado de brute-force em Redis ou banco — está tudo em memória de processo.
+- Não expõe métricas em formato Prometheus, só um JSON próprio.
+- Não tem HTTPS habilitado por padrão.
+- Não tem endpoint de criação de usuário fora do script de seed.
+
+---
+
+## Próximos Passos
+
+- Comparar `payload_hash` quando `(source, external_id)` já existir, para diferenciar duplicata real de atualização legítima.
+- Fazer o Dockerfile/entrypoint respeitar `SEED_ON_STARTUP` de fato, permitindo desligar o seed automático depois do primeiro deploy.
+- Mover contadores de métricas HTTP e bloqueio de brute-force para Redis, para funcionar corretamente com múltiplas réplicas.
+- Alinhar o header de IP confiável entre o Nginx (`X-Real-IP`/`X-Forwarded-For`) e o código (hoje `X-Client-IP`).
+- Remover a chamada duplicada em `GET /metrics`.
+- Adicionar endpoint de logout/revogação de refresh token.
+
+---
+
+## Evolução para Produção
+
+- **Redis** para estado compartilhado entre réplicas (rate limit, brute-force, métricas HTTP).
+- **Prometheus + Grafana**, no lugar do JSON próprio em `/metrics`.
+- **HTTPS ativo** via Certbot, assim que houver domínio definitivo.
+- **Fila** para dissociar ingestões de alto volume da resposta síncrona do `/ingest`.
+- **Revogação de refresh tokens** (tabela de tokens ativos ou denylist).
+- **Alertas automáticos** a partir dos `security_events` (ex.: N tentativas de login bloqueadas em um intervalo curto).
+
+---
+
+## Aprendizados
+
+A maior lição veio de reler o próprio `ingest_service.py`: calculei o `payload_hash` desde o início, mas nunca cheguei a usá-lo na decisão de deduplicação — ele existe, mas ainda não faz o trabalho que o nome sugere.
+
+Só percebi nesta revisão que `SEED_ON_STARTUP` nunca é lido — a variável ficou no `settings.py` de uma fase mais antiga, enquanto o comportamento real foi definido direto no `CMD` do Dockerfile, e as duas coisas foram divergindo sem eu notar.
+
+Entender a diferença entre `X-Real-IP`/`X-Forwarded-For` (que o Nginx injeta de verdade) e `X-Client-IP` (que o código espera) me ensinou a sempre validar, depois de configurar um proxy, se o cabeçalho que o código lê é exatamente o que o proxy envia.
+
+Rodar os testes com `SAVEPOINT` contra um Postgres real, em vez de mockar o banco, deu bem mais confiança de que os testes refletem o comportamento real da aplicação — ao custo de precisar de um Postgres de pé pra rodar a suíte.
+
+Separar auditoria (mudança em dado) de security events (tentativa de acesso) desde o início evitou misturar duas coisas com finalidades bem diferentes no mesmo log.
 
 ---
 
 ## Autor
 
-**Robert Emanuel**  
-Back-end Developer (Python/FastAPI • SQL • Docker • Segurança)
+**Robert Emanuel**
+
+Desenvolvedor Back-end focado em Python, FastAPI, SQL, Docker e APIs REST.
+
+GitHub:
+https://github.com/r0b3rTdk
+
+LinkedIn:
+https://www.linkedin.com/in/robert-emanuel/
