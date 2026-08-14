@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_api_key_for_ingest
@@ -25,4 +25,9 @@ def ingest(
     user_agent = request.headers.get("user-agent")
 
     # Delegação da lógica para a camada de serviço
-    return ingest_event(db, req, client_ip, user_agent)
+    resultado = ingest_event(db, req, client_ip, user_agent)
+    
+    if resultado["status"] == "CONFLICT":
+        raise HTTPException(status_code=409, detail=resultado)
+    
+    return resultado

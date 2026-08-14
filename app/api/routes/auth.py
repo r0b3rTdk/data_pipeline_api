@@ -9,7 +9,7 @@ Authentication endpoints.
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.infra.db.session import get_db
@@ -17,7 +17,7 @@ from app.infra.db.repositories.user_repo import get_user_by_username
 from app.infra.db.repositories.security_event_repo import create_security_event
 from app.core.settings import settings
 from app.core.security import (
-    verify_password,
+    verify_password,       
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -35,7 +35,15 @@ router = APIRouter(prefix="/api/v1", tags=["auth"])
 class LoginRequest(BaseModel):
     username: str
     password: str
-
+    
+    model_config = ConfigDict(
+        json_schema_extra= {
+            "example": {
+                "username": "seu_usuario_admin",
+                "password": "SuaSenha@123"
+            }
+        }
+    )
 
 # Resposta de login (JWT)
 class LoginResponse(BaseModel):

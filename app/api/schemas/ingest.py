@@ -4,7 +4,7 @@ Ingestion request schemas.
 DTOs that define the payload contract for event ingestion endpoints.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 # Schema do payload de ingestão
@@ -32,3 +32,22 @@ class IngestRequest(BaseModel):
 
     # Dados adicionais livres do evento
     attributes: dict = Field(default_factory=dict)
+
+    # Injeta um exemplo real na documentação do Swagger
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "source": "partner_api_1",
+                "external_id": "evt-78901",
+                "schema_version": "v1",
+                "entity_id": "user-456",
+                "event_type": "ACCOUNT_CREATED",
+                "event_status": "SUCCESS",
+                "event_timestamp": "2026-08-11T20:00:00Z",
+                "attributes": {
+                    "plan": "premium",
+                    "region": "BR"
+                }
+            }
+        }
+    )

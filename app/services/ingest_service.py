@@ -34,25 +34,46 @@ def ingest_event(
     # 2) Deduplicação simples (source + external_id)
     existing = find_raw_by_source_external(db, src.id, req.external_id)
     if existing:
-        raw = RawIngestion(
-            source_id=src.id,
-            external_id=req.external_id,
-            schema_version=req.schema_version,
-            event_timestamp=req.event_timestamp,
-            payload_raw=json.dumps(payload_dict, ensure_ascii=False),
-            payload_hash=raw_hash,
-            processing_status="DUPLICATE",
-            error_count=0,
-            request_id=request_id,
-            client_ip=client_ip,
-            user_agent=user_agent,
-        )
-        raw = insert_raw(db, raw)
-        return {
-            "status": "DUPLICATE",
-            "raw_id": raw.id,
-            "request_id": request_id,
-        }
+        if existing.payload_hash == raw_hash:   
+            raw = RawIngestion(
+                source_id=src.id,
+                external_id=req.external_id,
+                schema_version=req.schema_version,
+                event_timestamp=req.event_timestamp,
+                payload_raw=json.dumps(payload_dict, ensure_ascii=False),
+                payload_hash=raw_hash,
+                processing_status="DUPLICATE",
+                error_count=0,
+                request_id=request_id,
+                client_ip=client_ip,
+                user_agent=user_agent,
+            )
+            raw = insert_raw(db, raw)
+            return {
+                "status": "DUPLICATE",
+                "raw_id": raw.id,
+                "request_id": request_id,
+            }
+        else:
+            raw = RawIngestion(
+                source_id=src.id,
+                external_id=req.external_id,
+                schema_version=req.schema_version,
+                event_timestamp=req.event_timestamp,
+                payload_raw=json.dumps(payload_dict, ensure_ascii=False),
+                payload_hash=raw_hash,
+                processing_status="CONFLICT",
+                error_count=1,
+                request_id=request_id,
+                client_ip=client_ip,
+                user_agent=user_agent,
+            )
+            raw = insert_raw(db, raw)
+            return {
+                "status": "CONFLICT",
+                "raw_id": raw.id,
+                "request_id": request_id,
+            }
 
     # 3) Sempre grava o RAW primeiro
     raw = RawIngestion(
@@ -62,7 +83,7 @@ def ingest_event(
         event_timestamp=req.event_timestamp,
         payload_raw=json.dumps(payload_dict, ensure_ascii=False),
         payload_hash=raw_hash,
-        processing_status="REJECTED",  # default pessimista
+        processing_status="REJECTED",
         error_count=0,
         request_id=request_id,
         client_ip=client_ip,
