@@ -6,7 +6,7 @@ processes valid events, handles deduplication, and rejects conflicts.
 """
 import uuid
 
-def test_ingest_unauthorized_invalid_api_key(client, db_session):
+def test_ingest_unauthorized_invalid_api_key(client, db_session, ingest_source):
     headers = {"X-API-Key": "fake"}
     
     r = client.post("/api/v1/ingest", json={
@@ -23,7 +23,7 @@ def test_ingest_unauthorized_invalid_api_key(client, db_session):
     assert r.status_code in (401, 403), r.text
 
 
-def test_ingest_valid_happy_path(client, db_session):
+def test_ingest_valid_happy_path(client, db_session, ingest_source):
     headers = {"X-API-Key": "partner_a_key_change_me"}
     
     r = client.post("/api/v1/ingest", json={
@@ -41,7 +41,7 @@ def test_ingest_valid_happy_path(client, db_session):
     assert r.json()["status"] == "ACCEPTED"
 
 
-def test_ingest_duplicate_same_hash(client, db_session):
+def test_ingest_duplicate_same_hash(client, db_session, ingest_source):
     headers = {"X-API-Key": "partner_a_key_change_me"}
     
     payload_data = {
@@ -64,7 +64,7 @@ def test_ingest_duplicate_same_hash(client, db_session):
     assert r2.json()["status"] == "DUPLICATE"
 
 
-def test_ingest_conflict_different_hash(client, db_session):
+def test_ingest_conflict_different_hash(client, db_session, ingest_source):
     headers = {"X-API-Key": "partner_a_key_change_me"}
     
     payload_data = {

@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.infra.db.session import get_db
-from app.core.security import hash_password
+from app.core.security import hash_password, hash_api_key
 from app.core.login_attempts import reset_all
 
 from app.infra.db.models.user_account import UserAccount
@@ -35,7 +35,8 @@ if not DATABASE_URL:
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+TEST_SOURCE_NAME = "partner_a"
+TEST_SOURCE_API_KEY = "partner_a_key_change_me"
 
 @pytest.fixture()
 def db_session():
@@ -151,3 +152,31 @@ def trusted_event(db_session):
     db_session.add(t)
     db_session.flush()
     return t
+
+@pytest.fixture()
+def ingest_source(db_session):
+    """
+    Garante que a fonte usada pelos testes de ingestao existe,
+    com a API Key esperada — funciona tanto em banco vazio (CI)
+    quanto em banco ja seedado (local).
+    """
+    src = (
+        db_session.query(SourceSystem)
+        .filter(SourceSystem.name == TEST_SOURCE_NAME)
+        .one_or_none()
+    )
+    api_key_hash = hash_api_key(TEST_SOURCE_API_KEY)
+
+    if not src:
+        src = SourceSystem(
+            name=TEST_SOURCE_NAME,
+            status="active",
+            api_key_hash=api_key_hash,
+        )
+        db_session.add(src)
+    else:
+        src.api_key_hash = api_key_hash
+        src.status = "active"
+
+    db_session.flush()
+    return src
