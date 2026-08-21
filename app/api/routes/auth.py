@@ -37,7 +37,7 @@ class LoginRequest(BaseModel):
     password: str
     
     model_config = ConfigDict(
-        json_schema_extra= {
+        json_schema_extra={
             "example": {
                 "username": "seu_usuario_admin",
                 "password": "SuaSenha@123"
