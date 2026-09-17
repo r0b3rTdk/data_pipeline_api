@@ -3,7 +3,25 @@
 Este changelog registra as entregas por fase do projeto.
 
 ---
-## [Fase 12] — Deploy Final (Render)
+
+## [v1.2.0] — Infraestrutura e Segurança (Redis + X-Forwarded-For)
+
+### Adicionado
+- Migração do armazenamento do **SlowAPI** (rate-limit) e da proteção contra **brute-force** para **Redis**, garantindo persistência de bloqueios em ambiente de múltiplos workers e após reinicializações de container.
+- Serviço do Redis adicionado ao fluxo do Docker Compose.
+- Variável obrigatória `REDIS_URL` para gerenciar a conexão com o banco em memória.
+
+### Alterado
+- Refatoração da captura de IP do cliente em `auth.py` e `rate_limit.py`. Agora a API prioriza a leitura do header HTTP padrão `X-Forwarded-For` no lugar do header customizado `X-Client-IP`, garantindo compatibilidade real com o proxy reverso Nginx e arquiteturas de Load Balancer em nuvem (Render).
+- Removida a configuração de ambiente não utilizada `SEED_ON_STARTUP` de `settings.py` e `.env`, refletindo a arquitetura atual de povoamento de dados sob demanda via scripts no container.
+- Atualização do `requirements.txt` incluindo o driver `redis`.
+
+### Corrigido
+- Resolução da limitação de estado operacional em memória. O controle de tentativas de login, bloqueios e métricas agora é distribuído e resiliente a restarts.
+- Auditoria de segurança confirmou que o Nginx em ambiente de produção-lite agora repassa o IP corretamente.
+
+---
+## [Fase 12][v1.1.0] — Deploy Final (Render)
 
 ### Adicionado
 - Deploy real do backend no **Render Web Service**

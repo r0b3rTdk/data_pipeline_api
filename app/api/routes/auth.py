@@ -61,7 +61,11 @@ class RefreshResponse(BaseModel):
 
 # Função auxiliar para obter IP do cliente 
 def _client_ip(request: Request) -> str:
-    return request.headers.get("X-Client-IP") or (request.client.host if request.client else "unknown")
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # Pega sempre o primeiro IP da cadeia (cliente real), ignorando os proxies intermediários
+        return forwarded.split(",")[0].strip()
+    return request.headers.get("X-Real-IP") or (request.client.host if request.client else "unknown")
 
 # Função auxiliar para obter User-Agent
 def _user_agent(request: Request) -> str:

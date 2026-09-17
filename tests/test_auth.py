@@ -21,7 +21,7 @@ def test_login_ok_returns_access_and_refresh(client, db_session):
     r = client.post(
         "/api/v1/auth/login",
         json={"username": "admin_test", "password": "Admin@123"},
-        headers={"X-Client-IP": "1.1.1.1"},  # IP fixo para testes / rate-limit
+        headers={"X-Forwarded-For": "1.1.1.1"},  # IP fixo para testes / rate-limit
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -38,7 +38,7 @@ def test_login_fail_still_401(client, db_session):
     r = client.post(
         "/api/v1/auth/login",
         json={"username": "admin_test2", "password": "WRONG"},
-        headers={"X-Client-IP": "2.2.2.2"},
+        headers={"X-Forwarded-For": "2.2.2.2"},
     )
     assert r.status_code == 401
     assert r.json()["detail"] == "invalid_credentials"
@@ -54,7 +54,7 @@ def test_bruteforce_blocks_after_5_failures(client, db_session):
         r = client.post(
             "/api/v1/auth/login",
             json={"username": "bf_user", "password": "WRONG"},
-            headers={"X-Client-IP": ip},
+            headers={"X-Forwarded-For": ip},
         )
         assert r.status_code in (401, 429)
 
@@ -62,7 +62,7 @@ def test_bruteforce_blocks_after_5_failures(client, db_session):
     r = client.post(
         "/api/v1/auth/login",
         json={"username": "bf_user", "password": "WRONG"},
-        headers={"X-Client-IP": ip},
+        headers={"X-Forwarded-For": ip},
     )
     assert r.status_code == 429
     assert r.json()["detail"] == "too_many_login_attempts"
@@ -76,7 +76,7 @@ def test_refresh_flow(client, db_session):
     r = client.post(
         "/api/v1/auth/login",
         json={"username": "ref_user", "password": "Admin@123"},
-        headers={"X-Client-IP": ip},
+        headers={"X-Forwarded-For": ip},
     )
     assert r.status_code == 200, r.text
     refresh = r.json()["refresh_token"]
@@ -84,7 +84,7 @@ def test_refresh_flow(client, db_session):
     r2 = client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": refresh},
-        headers={"X-Client-IP": ip},
+        headers={"X-Forwarded-For": ip},
     )
     assert r2.status_code == 200, r2.text
     assert isinstance(r2.json()["access_token"], str) and len(r2.json()["access_token"]) > 20
@@ -101,7 +101,7 @@ def test_rate_limit_login_429(client, db_session):
         r = client.post(
             "/api/v1/auth/login",
             json={"username": "rl_user", "password": "Admin@123"},
-            headers={"X-Client-IP": ip},
+            headers={"X-Forwarded-For": ip},
         )
         assert r.status_code == 200, (i, r.text)
 
@@ -109,6 +109,25 @@ def test_rate_limit_login_429(client, db_session):
     r = client.post(
         "/api/v1/auth/login",
         json={"username": "rl_user", "password": "Admin@123"},
-        headers={"X-Client-IP": ip},
+        headers={"X-Forwarded-For": ip},
     )
     assert r.status_code == 429
+    
+    
+def test_bruteforce_writes_to_redis(client, db_session):
+    from app.core.login_attempts import r, _key
+    from tests.conftest import ensure_user
+    
+    ensure_user(db_session, "redis_user", "Admin@123", "admin")
+    ip = "10.10.10.10"
+    r.delete(_key(ip)) # Garante ambiente limpo
+    
+    client.post(
+        "/api/v1/auth/login",
+        json={"username": "redis_user", "password": "WRONG"},
+        headers={"X-Forwarded-For": ip},
+    )
+    
+    val = r.get(_key(ip))
+    assert val is not None, "Redis não gravou o IP"
+    assert int(val) == 1, f"Contador deveria ser 1, foi {val}"

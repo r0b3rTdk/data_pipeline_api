@@ -84,13 +84,9 @@ Do outro lado, operadores/analistas/auditores consultam TRUSTED, REJECTIONS, aud
 
 ## Trade-offs
 
-**Estado operacional em memória do processo.** Os contadores usados em `/metrics` (`app/core/http_metrics.py`) e o bloqueio de brute-force (`app/core/login_attempts.py`) vivem em dicionários dentro do processo Python, protegidos por lock. Funciona bem com uma única réplica; com múltiplos workers ou instâncias, cada processo tem sua própria contagem — um atacante distribuído entre processos nunca acumula tentativas no mesmo contador, e `/metrics` só reflete o processo que atendeu aquela chamada específica.
-
-**Identificação de IP inconsistente entre módulos, e desalinhada com o Nginx do próprio repositório.** A ingestão usa `request.client.host` puro. Login e rate-limit aceitam um header `X-Client-IP` enviado pelo cliente, documentado como recurso para testes/proxy. O `nginx/default.conf` deste projeto, porém, define `X-Real-IP` e `X-Forwarded-For` — nunca `X-Client-IP`. Ou seja, atrás do Nginx documentado aqui, esse header nunca é preenchido pelo proxy e fica sob controle total de quem faz a chamada.
-
-**`SEED_ON_STARTUP` não é lido em nenhum lugar.** A variável existe em `settings.py`, mas quem decide se o seed roda é o `CMD` do Dockerfile, que chama `python -m app.scripts.seed` incondicionalmente a cada subida. Na prática, isso significa que a senha do admin seed e a API Key da fonte seed voltam para o valor das variáveis de ambiente a cada restart do container, mesmo que alguém tenha alterado esses valores direto no banco depois.
-
 **Armazenamento redundante (RAW + TRUSTED).** Salvar o dado puro em `RAW` e o normalizado em `TRUSTED` duplica o consumo de espaço para cada evento bem-sucedido. Optou-se por esse custo em prol de segurança e auditoria retroativa.
+
+*(Nota: Os trade-offs anteriores sobre rate-limit viver em memória volátil, inconsistência de IPs e variáveis fantasmas como `SEED_ON_STARTUP` foram totalmente resolvidos a partir da v1.2.0 com a introdução do Redis e adoção do `X-Forwarded-For`.)*
 
 ---
 
@@ -153,6 +149,7 @@ data_pipeline_api/
 | Nginx | Reverse proxy em produção, com TLS via Certbot |
 | PostgreSQL | Banco relacional (RAW, TRUSTED, REJECTIONS, auditoria) |
 | Render | Hospedagem da API, do banco e do frontend |
+| Redis | Armazenamento de estado distribuído (Rate Limit e Brute-force) |
 
 > `pydantic-settings` está listado no `requirements.txt`, mas `app/core/settings.py` usa `os.getenv` puro por decisão explícita registrada no próprio arquivo — a dependência está instalada, mas não é usada hoje.
 
@@ -195,16 +192,17 @@ Swagger em `http://localhost:8000/docs`.
 | `/api/v1/auth/login` | POST | Login (retorna access + refresh token) |
 | `/api/v1/auth/refresh` | POST | Renovação de access token |
 
-### Bootstrap inicial (seed)
+### Ambiente e Bootstrap inicial (seed)
 
-O seed cria um admin e uma fonte de teste, a partir de variáveis de ambiente com defaults de desenvolvimento:
+O seed cria um admin e uma fonte de teste, a partir de variáveis de ambiente com defaults de desenvolvimento. A partir da v1.2.0, o sistema também exige uma conexão com o Redis:
 
-| Variável | Default (dev) | Uso |
-|---|---|---|
-| `SEED_ADMIN_USERNAME` | `admin` | Usuário administrador inicial |
-| `SEED_ADMIN_PASSWORD` | `admin123` | Senha do admin (hash via Passlib) |
-| `SEED_SOURCE_NAME` | `partner_a` | Nome da fonte de dados de teste |
-| `SEED_SOURCE_API_KEY` | `partner_a_key_change_me` | API Key da fonte de teste (hash SHA-256) |
+| Variável | Uso |
+|---|---|
+| `REDIS_URL` | URL de conexão (ex: `redis://localhost:6379` ou URL do Render) |
+| `SEED_ADMIN_USERNAME` | Usuário administrador inicial |
+| `SEED_ADMIN_PASSWORD` | Senha do admin (hash via Passlib) |
+| `SEED_SOURCE_NAME` | Nome da fonte de dados de teste |
+| `SEED_SOURCE_API_KEY` | API Key da fonte de teste (hash SHA-256) |
 
 > **Produção:** essas quatro variáveis precisam ser sobrescritas com valores fortes e aleatórios — e permanecer assim, já que o seed roda a cada restart do container (ver "Trade-offs" sobre `SEED_ON_STARTUP`).
 
@@ -258,10 +256,6 @@ A suíte roda contra um Postgres real (não mocks), usando `SAVEPOINT`/rollback 
 
 ## Limitações Conhecidas
 
-- `SEED_ON_STARTUP` nunca é lido; o seed roda incondicionalmente a cada subida do container, via `CMD` do Dockerfile.
-- `LOGIN_MAX_ATTEMPTS` e `LOGIN_BLOCK_MINUTES` existem em `settings.py`, mas nunca são lidos — os valores reais (5 tentativas, 10 minutos) estão fixos em `login_attempts.py`.
-- `X-Client-IP` é aceito de headers enviados pelo próprio cliente para a chave de rate-limit/brute-force, mas o Nginx do projeto não seta esse header — atrás do proxy documentado aqui, ele fica sob controle de quem faz a chamada.
-- Contadores de `/metrics` e bloqueio de brute-force vivem em memória do processo; não sobrevivem a um restart nem são compartilhados entre réplicas.
 - `GET /metrics` chama `get_metrics()` duas vezes seguidas com os mesmos parâmetros — uma consulta redundante ao banco.
 - `frontend/config.js` tem a URL da API fixa no código, apontando para produção por padrão.
 - Bloco HTTPS do Nginx está comentado, sem certificado ativo por padrão.
@@ -274,7 +268,6 @@ A suíte roda contra um Postgres real (não mocks), usando `SAVEPOINT`/rollback 
 
 - Não faz upsert de eventos: um reenvio com o mesmo identificador mas payload diferente é bloqueado como `CONFLICT`, não aplicado como atualização.
 - Não tem revogação/blacklist de refresh token: um token emitido continua válido até expirar, mesmo sem endpoint de logout.
-- Não persiste métricas HTTP nem estado de brute-force em Redis ou banco — está tudo em memória de processo.
 - Não expõe métricas em formato Prometheus, só um JSON próprio.
 - Não tem HTTPS habilitado por padrão.
 - Não tem endpoint de criação de usuário fora do script de seed.
@@ -286,8 +279,6 @@ A suíte roda contra um Postgres real (não mocks), usando `SAVEPOINT`/rollback 
 ## Próximos Passos
 
 - Fazer o Dockerfile/entrypoint respeitar `SEED_ON_STARTUP` de fato, permitindo desligar o seed automático depois do primeiro deploy.
-- Mover contadores de métricas HTTP e bloqueio de brute-force para Redis, para funcionar corretamente com múltiplas réplicas.
-- Alinhar o header de IP confiável entre o Nginx (`X-Real-IP`/`X-Forwarded-For`) e o código (hoje `X-Client-IP`).
 - Remover a chamada duplicada em `GET /metrics`.
 - Adicionar endpoint de logout/revogação de refresh token.
 - Implementar paginação otimizada nos endpoints de listagem.
@@ -297,7 +288,6 @@ A suíte roda contra um Postgres real (não mocks), usando `SAVEPOINT`/rollback 
 
 ## Evolução para Produção
 
-- **Redis** para estado compartilhado entre réplicas (rate limit, brute-force, métricas HTTP).
 - **Prometheus + Grafana**, no lugar do JSON próprio em `/metrics`.
 - **HTTPS ativo** via Certbot, assim que houver domínio definitivo.
 - **Fila** para dissociar ingestões de alto volume da resposta síncrona do `/ingest`.
