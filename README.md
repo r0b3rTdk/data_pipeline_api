@@ -315,4 +315,5 @@ A suíte roda contra um Postgres real (não mocks), usando `SAVEPOINT`/rollback 
 Desenvolvedor Back-end focado em Python, FastAPI, SQL, Docker e APIs REST.
 
 GitHub: https://github.com/r0b3rTdk
+
 LinkedIn: https://www.linkedin.com/in/robert-emanuel/
